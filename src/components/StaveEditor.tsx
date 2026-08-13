@@ -1316,6 +1316,11 @@ export default function StaveEditor() {
               t.setAttribute("stroke-width", "1.4");
             }
           }
+          // Note glyphs (● ✕ ▷ and rests) render slightly translucent so the
+          // score feels lighter and less heavy.
+          for (const g of svgEl.querySelectorAll("g.vf-stavenote text")) {
+            g.setAttribute("opacity", "0.8");
+          }
         }
 
         // Make every score note interactive: click edits it, drag moves it.
