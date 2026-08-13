@@ -116,6 +116,10 @@ const SYSTEMS_PER_PAGE = 12; // stave lines per PDF-style page (minimum)
 const PAGE_W = 860; // A4-ish page at screen scale
 const PAGE_H = 1216;
 const PAGE_MARGIN_X = 48;
+/* Breathing room at the head (start) and back (end) of every measure's note
+   area, so notes never crowd the clef/time signature or the end barline.
+   Applied uniformly so spacing stays consistent across the whole row. */
+const NOTE_AREA_INSET = 14;
 const PAGE_MARGIN_TOP = 56;
 const PAGE_MARGIN_BOTTOM = 64;
 const ROW_H = 91; // 12 systems fit within the A4 page height
@@ -983,6 +987,11 @@ export default function StaveEditor() {
                 ctx.fillText("4", tx, staffLineY + 13);
                 ctx.restore();
               }
+
+              // Head/back breathing room: inset the note area from the row's
+              // barlines for EVERY measure (uniform, so nothing looks
+              // squeezed relative to its neighbours).
+              stave.setNoteStartX(stave.getNoteStartX() + NOTE_AREA_INSET);
 
               // Measure number at each system start (top row only).
               if (c === 0 && ri === 0) {

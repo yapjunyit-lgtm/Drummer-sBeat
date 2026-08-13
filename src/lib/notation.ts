@@ -68,11 +68,11 @@ export const VEX_DURATION: Record<DurationId, string> = {
   "8t": "8",
 };
 
-/* Notes render at 14pt instead of VexFlow's 30pt default — compact enough
+/* Notes render at 13pt instead of VexFlow's 30pt default — compact enough
    that dense rhythms (e.g. 16 sixteenths) fit a fixed measure, and small
    enough that the first measure's notes clear the 4/4 time signature
    without squeezing the note area or shrinking the input boxes. */
-const NOTE_FONT_SIZE = 14;
+const NOTE_FONT_SIZE = 13;
 
 /* Largest rest that fits a gap: whole → half → quarter → eighth → 16th → 32nd. */
 export const REST_ORDER: { vex: string; slots: number }[] = [
