@@ -976,15 +976,12 @@ export default function StaveEditor() {
               // page's first measure, like the reference scores.
               if (ri === 0 && m === sysStart * MEASURES_PER_SYSTEM) {
                 ctx.save();
-                ctx.setFont('bold 15px "Times New Roman", Times, serif');
+                ctx.setFont('bold 11px "Times New Roman", Times, serif');
                 ctx.setFillStyle(ghost ? "#94a3b8" : "#18181b");
-                const tx = x + 26;
-                ctx.fillText("4", tx, staffLineY - 7);
-                ctx.fillText("4", tx, staffLineY + 15);
+                const tx = x + 18;
+                ctx.fillText("4", tx, staffLineY - 5);
+                ctx.fillText("4", tx, staffLineY + 13);
                 ctx.restore();
-                // Start this measure's notes after the time signature, so
-                // the first noteheads don't sit on top of the digits.
-                stave.setNoteStartX(x + 52);
               }
 
               // Measure number at each system start (top row only).
