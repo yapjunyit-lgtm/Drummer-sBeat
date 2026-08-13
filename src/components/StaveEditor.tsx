@@ -1508,25 +1508,25 @@ export default function StaveEditor() {
       Tone.Transport.schedule((t) => {
         const engine = engineRef.current;
         if (!engine) return;
-        const voice =
-          engine.drummers[group[0].part ?? 0] ?? engine.drummers[0];
-        if (!voice) return;
-        // Each instrument may only fire once per time (Tone requires strictly
-        // increasing start times per instrument), so a same-time edge+edge
-        // chord still sounds once per instrument.
-        let centerHit = false;
-        let edgeHit = false;
-        let rimHit = false;
+        // Play every note through ITS OWN drummer's voice, so simultaneous
+        // hits from different drummers (a D1 + D2 chord) are both audible
+        // and respect each drummer's volume. Same-part duplicates at the
+        // same time are deduped per (part, zone) because Tone requires
+        // strictly increasing start times per instrument.
+        const fired = new Set<string>();
         for (const n of group) {
+          const part = n.part ?? 0;
+          const voice = engine.drummers[part] ?? engine.drummers[0];
+          if (!voice) continue;
           const zone = zoneById(n.zone);
-          if (zone.id === "center" && !centerHit) {
-            centerHit = true;
+          const key = `${part}:${n.zone}`;
+          if (fired.has(key)) continue;
+          fired.add(key);
+          if (zone.id === "center") {
             voice.center.triggerAttackRelease("C2", "8n", t);
-          } else if (zone.id === "edge" && !edgeHit) {
-            edgeHit = true;
+          } else if (zone.id === "edge") {
             voice.edge.triggerAttackRelease("8n", t);
-          } else if (zone.id === "rim" && !rimHit) {
-            rimHit = true;
+          } else if (zone.id === "rim") {
             voice.rim.triggerAttackRelease("32n", t);
           }
         }
