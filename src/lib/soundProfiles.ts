@@ -35,7 +35,7 @@ export const SOUND_PROFILES: SoundProfile[] = [
     name: "Real Kit",
     zh: "实鼓采样",
     description:
-      "Single hits extracted from the Chinese kit recording: deep 鼓心, sharp 鼓边, dry 鼓棒 tick. One hit per file.",
+      "Single hits from the Chinese kit: 鼓心 pitched down + lowpassed for more bass, 鼓边 pitched up + highpassed for extra brightness, dry 鼓棒 tick.",
   },
   {
     id: "current",
@@ -74,18 +74,43 @@ export const SOUND_PROFILES: SoundProfile[] = [
 /* A single drum hit loaded from public/samples (one clean hit per file). */
 async function makeSampleVoice(
   url: string,
-  volume: number
+  volume: number,
+  opts?: {
+    /** Slower playback = lower pitch (bassier); faster = brighter. */
+    playbackRate?: number;
+    lowpass?: number;
+    highpass?: number;
+  }
 ): Promise<ZoneVoice | null> {
   try {
-    const player = new Tone.Player({ url, loop: false });
-    player.volume.value = volume;
-    player.toDestination();
+    const player = new Tone.Player({
+      url,
+      loop: false,
+      playbackRate: opts?.playbackRate ?? 1,
+    });
+    const out = new Tone.Volume(volume).toDestination();
+    const fx: Tone.ToneAudioNode[] = [];
+    if (opts?.lowpass) {
+      fx.push(
+        new Tone.Filter({ type: "lowpass", frequency: opts.lowpass, Q: 0.7 })
+      );
+    }
+    if (opts?.highpass) {
+      fx.push(
+        new Tone.Filter({ type: "highpass", frequency: opts.highpass, Q: 0.7 })
+      );
+    }
+    player.chain(...fx, out);
     await player.loaded;
     return {
-      volume: player.volume,
+      volume: out.volume,
       triggerAttackRelease: (_duration, time) =>
         player.start(time ?? Tone.now()),
-      dispose: () => player.dispose(),
+      dispose: () => {
+        player.dispose();
+        for (const f of fx) f.dispose();
+        out.dispose();
+      },
     };
   } catch {
     return null;
@@ -224,7 +249,11 @@ function makeLayeredVoice(opts: {
 export async function buildVoiceSet(profileId: string): Promise<VoiceSet> {
   if (profileId === "realKit") {
     const center =
-      (await makeSampleVoice("/samples/gu-xin.wav", -5)) ??
+      (await makeSampleVoice("/samples/gu-xin.wav", -5, {
+        // Deeper and bassier: pitch down ~2 semitones + lowpass.
+        playbackRate: 0.88,
+        lowpass: 320,
+      })) ??
       makeMembraneVoice({
         pitch: "C2",
         pitchDecay: 0.05,
@@ -234,7 +263,11 @@ export async function buildVoiceSet(profileId: string): Promise<VoiceSet> {
         volume: -4,
       });
     const edge =
-      (await makeSampleVoice("/samples/gu-bian.wav", -7)) ??
+      (await makeSampleVoice("/samples/gu-bian.wav", -7, {
+        // Brighter: pitch up ~2 semitones + highpass.
+        playbackRate: 1.12,
+        highpass: 2100,
+      })) ??
       makeNoiseVoice({
         noiseType: "pink",
         filterType: "bandpass",
