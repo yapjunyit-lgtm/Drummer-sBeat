@@ -76,19 +76,6 @@ const NOTE_FONT_SIZE = 13;
 /* Noteheads are drawn larger than the rest of the note (stems, rests stay
    compact) so the ● ✕ ▷ symbols read clearly. */
 const NOTEHEAD_FONT_SIZE = 16;
-/* Stem length per duration. Denser groups (16ths/32nds) get taller stems so
-   their beams sit visibly higher than a neighbouring eighth-note group's
-   single beam — the two groups no longer look like one continuous top bar. */
-const STEM_LENGTH: Record<DurationId, number> = {
-  1: 28,
-  2: 28,
-  q: 28,
-  8: 28,
-  16: 33,
-  32: 33,
-  "8t": 28,
-};
-
 /* Largest rest that fits a gap: whole → half → quarter → eighth → 16th → 32nd. */
 export const REST_ORDER: { vex: string; slots: number }[] = [
   { vex: "1r", slots: 96 },
@@ -283,7 +270,7 @@ export function buildMeasureTickables(
     slot: number;
     span: number;
   }[] = [];
-  let beamRun: { sn: VexFlow.StaveNote; dur: DurationId }[] = [];
+  let beamRun: { sn: VexFlow.StaveNote; dur: DurationId; beat: number }[] = [];
 
   const flushBeam = () => {
     if (beamRun.length >= 2) {
@@ -301,9 +288,8 @@ export function buildMeasureTickables(
     });
     sn.setFont({ size: NOTE_FONT_SIZE });
     // Compact stems: 35px was too tall, 22px too short — 28px is the
-    // middle ground, with per-duration lengths so group beams land at
-    // distinct heights.
-    sn.setStemLength(STEM_LENGTH[note.duration] ?? 28);
+    // middle ground.
+    sn.setStemLength(28);
     // These percussion notes float on the lowest staff line, so point their
     // stems upward; downward stems would run through the input boxes that
     // sit just below the notes. (setStemDirection snapshots the stem
@@ -383,10 +369,16 @@ export function buildMeasureTickables(
     cursor = note.slot + (note.duration === "8t" ? 12 : SPAN[note.duration]);
     const d = note.duration;
     if (d === "8" || d === "16" || d === "32") {
-      if (beamRun.length > 0 && beamRun[beamRun.length - 1].dur !== d) {
+      const beat = Math.floor(note.slot / SLOTS_PER_BEAT);
+      const last = beamRun[beamRun.length - 1];
+      // A new beam starts when the duration changes OR when the beat
+      // changes — so two 二连音 (2 eighths each) in neighbouring beats stay
+      // two separate 2-note groups instead of merging into a 4-note beam
+      // that looks like a 四连音.
+      if (last && (last.dur !== d || last.beat !== beat)) {
         flushBeam();
       }
-      beamRun.push({ sn, dur: d });
+      beamRun.push({ sn, dur: d, beat });
     } else {
       flushBeam();
     }
