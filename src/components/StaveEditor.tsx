@@ -1035,9 +1035,16 @@ export default function StaveEditor() {
               const { tickables, tuplets, beams, positions } =
                 buildMeasureTickables(measureNotes, VF);
               if (ghost) {
-                tickables.forEach((t) =>
-                  t.setStyle({ fillStyle: "#94a3b8", strokeStyle: "#94a3b8" })
-                );
+                tickables.forEach((t) => {
+                  // Inactive-drummer (ghost) rows keep the measure structure
+                  // but show no content: rests become invisible so grey
+                  // symbols don't sit "on top of" the neighbouring notes.
+                  t.setStyle(
+                    t.isRest()
+                      ? { fillStyle: "transparent", strokeStyle: "transparent" }
+                      : { fillStyle: "#94a3b8", strokeStyle: "#94a3b8" }
+                  );
+                });
               }
               const voice = new VF.Voice({ numBeats: BEATS, beatValue: 4 });
               try {
