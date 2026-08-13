@@ -440,6 +440,99 @@ function SlotCell({
 }
 
 /* ------------------------------------------------------------------ */
+/* Percussion voice synthesis                                          */
+/* ------------------------------------------------------------------ */
+
+interface DrumVoice {
+  volume: Tone.Param<"decibels">;
+  triggerAttackRelease: (duration: string, time?: number) => void;
+  dispose: () => void;
+}
+
+/* 鼓心 (center): deep taiko / low-tom membrane — pitched skin with a fast
+   downward sweep and long resonance. */
+function buildCenterVoice(): Tone.MembraneSynth {
+  const center = new Tone.MembraneSynth({
+    pitchDecay: 0.12,
+    octaves: 5,
+    envelope: { attack: 0.002, decay: 0.75, sustain: 0, release: 0.3 },
+  }).toDestination();
+  center.volume.value = -6;
+  return center;
+}
+
+/* 鼓边 (edge): rimshot-like — a sharp band-passed noise crack layered with a
+   short metallic triangle ring around 2.7kHz. */
+function buildEdgeVoice(): DrumVoice {
+  const out = new Tone.Volume(-8).toDestination();
+  const noise = new Tone.NoiseSynth({
+    noise: { type: "pink" },
+    envelope: { attack: 0.001, decay: 0.14, sustain: 0, release: 0.05 },
+  });
+  const bp = new Tone.Filter({ type: "bandpass", frequency: 2400, Q: 2.2 });
+  noise.chain(bp, out);
+  const ring = new Tone.Oscillator({ type: "triangle", frequency: 2700 });
+  const ringEnv = new Tone.AmplitudeEnvelope({
+    attack: 0.001,
+    decay: 0.09,
+    sustain: 0,
+    release: 0.03,
+  });
+  ring.chain(ringEnv, out);
+  ring.start();
+  return {
+    volume: out.volume,
+    triggerAttackRelease(duration: string, time?: number) {
+      const seconds = Math.max(0.03, Tone.Time(duration).toSeconds() * 0.5);
+      noise.triggerAttackRelease(duration, time);
+      ringEnv.triggerAttackRelease(seconds, time);
+    },
+    dispose() {
+      noise.dispose();
+      bp.dispose();
+      ring.dispose();
+      ringEnv.dispose();
+      out.dispose();
+    },
+  };
+}
+
+/* 鼓棒/鼓圆 (rim): woodblock / stick-click — a white-noise burst under
+   50ms plus a dry wooden pitch click. */
+function buildRimVoice(): DrumVoice {
+  const out = new Tone.Volume(-12).toDestination();
+  const noise = new Tone.NoiseSynth({
+    noise: { type: "white" },
+    envelope: { attack: 0.001, decay: 0.035, sustain: 0, release: 0.02 },
+  });
+  const hp = new Tone.Filter({ type: "highpass", frequency: 5200, Q: 0.8 });
+  noise.chain(hp, out);
+  const click = new Tone.Oscillator({ type: "sine", frequency: 1900 });
+  const clickEnv = new Tone.AmplitudeEnvelope({
+    attack: 0.001,
+    decay: 0.03,
+    sustain: 0,
+    release: 0.015,
+  });
+  click.chain(clickEnv, out);
+  click.start();
+  return {
+    volume: out.volume,
+    triggerAttackRelease(duration: string, time?: number) {
+      noise.triggerAttackRelease(duration, time);
+      clickEnv.triggerAttackRelease(0.025, time);
+    },
+    dispose() {
+      noise.dispose();
+      hp.dispose();
+      click.dispose();
+      clickEnv.dispose();
+      out.dispose();
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Editor                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -588,8 +681,8 @@ export default function StaveEditor() {
   const engineRef = useRef<{
     drummers: {
       center: Tone.MembraneSynth;
-      edge: Tone.NoiseSynth;
-      rim: Tone.NoiseSynth;
+      edge: DrumVoice;
+      rim: DrumVoice;
     }[];
   } | null>(null);
 
@@ -1361,36 +1454,11 @@ export default function StaveEditor() {
     const base = engineRef.current ?? { drummers: [] };
     while (base.drummers.length < count) {
       // One voice per drummer so each has an independent volume.
-      const center = new Tone.MembraneSynth({
-        pitchDecay: 0.05,
-        octaves: 3,
-        envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
-      }).toDestination();
-      center.volume.value = -4;
-
-      const edgeFilter = new Tone.Filter({
-        type: "bandpass",
-        frequency: 1800,
-        Q: 1.2,
-      }).toDestination();
-      const edge = new Tone.NoiseSynth({
-        noise: { type: "pink" },
-        envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
-      }).connect(edgeFilter);
-      edge.volume.value = -6;
-
-      const rimFilter = new Tone.Filter({
-        type: "highpass",
-        frequency: 4500,
-        Q: 0.8,
-      }).toDestination();
-      const rim = new Tone.NoiseSynth({
-        noise: { type: "white" },
-        envelope: { attack: 0.001, decay: 0.07, sustain: 0, release: 0.04 },
-      }).connect(rimFilter);
-      rim.volume.value = -10;
-
-      base.drummers.push({ center, edge, rim });
+      base.drummers.push({
+        center: buildCenterVoice(),
+        edge: buildEdgeVoice(),
+        rim: buildRimVoice(),
+      });
     }
     engineRef.current = base;
     return base;
@@ -1491,7 +1559,8 @@ export default function StaveEditor() {
           const zone = zoneById(n.zone);
           if (zone.id === "center" && !centerHit) {
             centerHit = true;
-            voice.center.triggerAttackRelease("C2", "8n", t);
+            // A1 (~55 Hz) — deep taiko/low-tom body for 鼓心.
+            voice.center.triggerAttackRelease("A1", "8n", t);
           } else if (zone.id === "edge" && !edgeHit) {
             edgeHit = true;
             voice.edge.triggerAttackRelease("8n", t);
