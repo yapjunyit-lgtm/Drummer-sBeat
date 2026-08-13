@@ -3439,6 +3439,14 @@ export default function StaveEditor() {
                   };
                 });
                 setActivePart(drummerCount);
+                // Build the new drummer's voices immediately and apply the
+                // default volume, so the added part is audible right away.
+                void ensureEngine(drummerCount + 1).then(() =>
+                  applyDrummerVolumes([
+                    ...(project?.drummerVolumes ?? [60]),
+                    60,
+                  ])
+                );
               }}
               aria-label="Add drummer 添加鼓手"
               className="rounded-lg border border-zinc-700 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
@@ -3528,6 +3536,13 @@ export default function StaveEditor() {
                     vols[activePart] = v;
                     return { ...p, drummerVolumes: vols };
                   });
+                  // Apply live to the engine so volume changes are audible
+                  // immediately — even while playback is running.
+                  applyDrummerVolumes(
+                    Array.from({ length: drummerCount }, (_, i) =>
+                      i === activePart ? v : (drummerVolumes[i] ?? 60)
+                    )
+                  );
                 }}
                 className="w-24 accent-amber-500"
               />
