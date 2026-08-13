@@ -902,7 +902,14 @@ export default function StaveEditor() {
           };
           centered(projectName, 22, 30);
           centered(projectDescription, 14, 54);
-          centered(authorLine, 12, 74);
+          // Composer/ensemble line right-aligned, like the troupe scores
+          // (e.g. "隆中华鼓队 队长团创作").
+          if (authorLine.trim() !== "") {
+            measureCanvas.font = '12px "Times New Roman", Times, serif';
+            const w = measureCanvas.measureText(authorLine).width;
+            ctx.setFont("12px Times New Roman");
+            ctx.fillText(authorLine, PAGE_W - PAGE_MARGIN_X - w, 74);
+          }
           ctx.restore();
         }
 
@@ -927,19 +934,55 @@ export default function StaveEditor() {
               const ghost = isGhostRow(m, part);
               const y = rowTop + ri * DRUMMER_ROW_STEP;
               const stave = new VF.Stave(x, y, measureW);
-              // 24 Festive Drums notation (per the MuseScore tutorial): the
-              // staff lines are hidden so notes float on an invisible single
-              // line, with no clef or time signature drawn.
+              // 24 Festive Drums notation (per the MuseScore tutorial and
+              // real troupe scores): notes float on ONE visible staff line —
+              // the bottom line of the hidden five-line staff — with the
+              // unpitched percussion clef at each system start.
               for (let l = 0; l < 5; l++) {
-                stave.setConfigForLine(l, { visible: false });
+                stave.setConfigForLine(l, { visible: l === 4 });
+              }
+              if (ghost) {
+                stave.setStyle({ strokeStyle: "#94a3b8", fillStyle: "#94a3b8" });
               }
               // Final barline at the very end of the score.
               if (m === measureCount - 1) stave.setEndBarType(3);
-              // 4/4 time signature on the top row of each page's first measure.
-              if (ri === 0 && m === sysStart * MEASURES_PER_SYSTEM) {
-                stave.addTimeSignature("4/4");
-              }
               stave.setContext(ctx).draw();
+
+              // The single staff line the notes sit on.
+              const staffLineY = stave.getYForLine(4);
+
+              // Unpitched percussion clef (two vertical bars + a horizontal
+              // bar), centred on the staff line at each system start.
+              if (c === 0) {
+                ctx.save();
+                ctx.setLineWidth(1.4);
+                ctx.setStrokeStyle(ghost ? "#94a3b8" : "#18181b");
+                const cx = x + 10;
+                const half = 9;
+                ctx.beginPath();
+                ctx.moveTo(cx - 4, staffLineY - half);
+                ctx.lineTo(cx - 4, staffLineY + half);
+                ctx.moveTo(cx + 4, staffLineY - half);
+                ctx.lineTo(cx + 4, staffLineY + half);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(cx - 6, staffLineY);
+                ctx.lineTo(cx + 6, staffLineY);
+                ctx.stroke();
+                ctx.restore();
+              }
+
+              // 4/4 time signature (stacked digits) on the top row of each
+              // page's first measure, like the reference scores.
+              if (ri === 0 && m === sysStart * MEASURES_PER_SYSTEM) {
+                ctx.save();
+                ctx.setFont('bold 15px "Times New Roman", Times, serif');
+                ctx.setFillStyle(ghost ? "#94a3b8" : "#18181b");
+                const tx = x + 26;
+                ctx.fillText("4", tx, staffLineY - 7);
+                ctx.fillText("4", tx, staffLineY + 15);
+                ctx.restore();
+              }
 
               // Measure number at each system start (top row only).
               if (c === 0 && ri === 0) {
@@ -3954,11 +3997,11 @@ export default function StaveEditor() {
             {!viewMode && (
               <p className="mt-3 text-xs leading-5 text-zinc-500">
                 24 Festive Drums notation (MuseScore tutorial style): notes
-                float on an invisible single staff line (● 鼓心, ✕ 鼓边, ▷
-                鼓棒) with barlines and measure numbers, on PDF-style A4
-                pages. Rhythm palette: whole 1, half 2, quarter ¼, eighth ⅛,
-                16th 1/16, 32nd 1/32, and triplet 3 per beat. Each project
-                autosaves its score.
+                float on a single staff line (● 鼓心, ✕ 鼓边, ▷ 鼓棒) with a
+                percussion clef, barlines and measure numbers, on PDF-style
+                A4 pages. Rhythm palette: whole 1, half 2, quarter ¼, eighth
+                ⅛, 16th 1/16, 32nd 1/32, and triplet 3 per beat. Each
+                project autosaves its score.
               </p>
             )}
           </div>
