@@ -73,6 +73,9 @@ export const VEX_DURATION: Record<DurationId, string> = {
    enough that the first measure's notes clear the 4/4 time signature
    without squeezing the note area or shrinking the input boxes. */
 const NOTE_FONT_SIZE = 13;
+/* Noteheads are drawn larger than the rest of the note (stems, rests stay
+   compact) so the ● ✕ ▷ symbols read clearly. */
+const NOTEHEAD_FONT_SIZE = 16;
 
 /* Largest rest that fits a gap: whole → half → quarter → eighth → 16th → 32nd. */
 export const REST_ORDER: { vex: string; slots: number }[] = [
@@ -296,7 +299,7 @@ export function buildMeasureTickables(
     // Noteheads are built in the constructor with the default font, so apply
     // the smaller size to each head directly (this also shrinks their widths,
     // letting dense rhythms fit a fixed measure).
-    for (const nh of sn.noteHeads) nh.setFont({ size: NOTE_FONT_SIZE });
+    for (const nh of sn.noteHeads) nh.setFont({ size: NOTEHEAD_FONT_SIZE });
     const glyph = NOTEHEAD_GLYPH[note.zone];
     if (glyph && sn.noteHeads.length > 0) {
       sn.noteHeads[0].text = glyph;
