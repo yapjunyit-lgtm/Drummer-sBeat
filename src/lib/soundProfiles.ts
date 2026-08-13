@@ -250,9 +250,10 @@ export async function buildVoiceSet(profileId: string): Promise<VoiceSet> {
   if (profileId === "realKit") {
     const center =
       (await makeSampleVoice("/samples/gu-xin.wav", -5, {
-        // Deeper and bassier: pitch down ~2 semitones + lowpass.
-        playbackRate: 0.88,
-        lowpass: 320,
+        // More solid: keep the deep pitch but let the mid body through so
+        // the hit has a defined punch instead of a muddy rumble.
+        playbackRate: 0.9,
+        lowpass: 800,
       })) ??
       makeMembraneVoice({
         pitch: "C2",
