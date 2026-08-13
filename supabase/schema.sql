@@ -4,7 +4,7 @@
 --
 -- Design note: `scores.data` (jsonb) is the source of truth for rendering and
 -- playback. `score_elements` is a normalized projection used for search,
--- filtering, and analytics (e.g. "scores with 鼓圆 accents").
+-- filtering, and analytics (e.g. "scores with 鼓棒 accents").
 
 create table profiles (
   id          uuid primary key references auth.users(id) on delete cascade,

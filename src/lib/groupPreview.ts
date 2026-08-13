@@ -4,7 +4,7 @@ import * as Tone from "tone";
 import { SLOTS_PER_BEAT, type RhythmGroup } from "@/lib/projects";
 
 /* Shared one-shot audio engine for previewing rhythm groups (鼓心 / 鼓边 /
-   鼓圆), matching the sounds used by the main editor. */
+   鼓棒), matching the sounds used by the main editor. */
 let engine: {
   center: Tone.MembraneSynth;
   edge: Tone.NoiseSynth;

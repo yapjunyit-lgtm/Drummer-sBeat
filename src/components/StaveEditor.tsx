@@ -2266,7 +2266,7 @@ export default function StaveEditor() {
   );
 
   /* ------------------------------------------------------------------ */
-  /* Keyboard shortcuts (PRD: 1 = Center, 3 = Edge, X = Frame)           */
+  /* Keyboard shortcuts (PRD: 1 = Center, 3 = Edge, X = Rim)             */
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
@@ -3699,7 +3699,7 @@ export default function StaveEditor() {
                   Keyboard 快捷键
                 </span>
                 <br />
-                1 · 鼓心 &nbsp;3 · 鼓边 &nbsp;X · 鼓圆
+                1 · 鼓心 &nbsp;3 · 鼓边 &nbsp;X · 鼓棒
                 <br />
                 E · eraser &nbsp;4 · 四连音 &nbsp;T · 三连音
                 <br />
@@ -3955,7 +3955,7 @@ export default function StaveEditor() {
               <p className="mt-3 text-xs leading-5 text-zinc-500">
                 24 Festive Drums notation (MuseScore tutorial style): notes
                 float on an invisible single staff line (● 鼓心, ✕ 鼓边, ▷
-                鼓圆) with barlines and measure numbers, on PDF-style A4
+                鼓棒) with barlines and measure numbers, on PDF-style A4
                 pages. Rhythm palette: whole 1, half 2, quarter ¼, eighth ⅛,
                 16th 1/16, 32nd 1/32, and triplet 3 per beat. Each project
                 autosaves its score.

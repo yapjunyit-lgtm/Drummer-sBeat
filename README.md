@@ -5,11 +5,11 @@ create, edit, share, and discover drum scores.
 
 ## Status
 
-- ✅ MVP editor: 3-zone grid (鼓心 / 鼓边 / 鼓圆), per-beat subdivisions
+- ✅ MVP editor: 3-zone grid (鼓心 / 鼓边 / 鼓棒), per-beat subdivisions
   (quarter → sextuplet), Tone.js playback with synced playhead, local
   autosave, publish UI (stub API).
 - ✅ Stave editor (MuseScore-style): VexFlow percussion staff with custom
-  noteheads (● 鼓心 / ▲ 鼓边 / ✕ 鼓圆), drag-and-drop palette
+  noteheads (● 鼓心 / ▲ 鼓边 / ✕ 鼓棒), drag-and-drop palette
   (@dnd-kit), duration palette, eraser, keyboard shortcuts (1/3/X/E/4/8),
   Tone.js playback with a moving playhead, local autosave.
 - ✅ Project-based workflow: create / switch / rename / delete projects, each

@@ -41,8 +41,8 @@ export const ZONES: {
   },
   {
     id: "rim",
-    zh: "鼓圆",
-    en: "Drum Frame",
+    zh: "鼓棒",
+    en: "Drumstick",
     key: "e/4",
     symbol: "▷",
     cellClass: "bg-sky-500/80 border-sky-400",

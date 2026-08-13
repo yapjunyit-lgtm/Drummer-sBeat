@@ -5,7 +5,7 @@ const FEATURES = [
   {
     zh: "音色分区",
     en: "Three sound zones",
-    desc: "鼓心 (center), 鼓边 (edge) and 鼓圆 (rim) hits on one visual grid.",
+    desc: "鼓心 (center), 鼓边 (edge) and 鼓棒 (drumstick) hits on one visual grid.",
     mark: "●",
   },
   {
@@ -31,7 +31,7 @@ const FEATURES = [
 const ZONE_ROW = [
   { symbol: "●", zh: "鼓心", en: "Center" },
   { symbol: "✕", zh: "鼓边", en: "Edge" },
-  { symbol: "▷", zh: "鼓圆", en: "Frame" },
+  { symbol: "▷", zh: "鼓棒", en: "Drumstick" },
 ];
 
 export default function Home() {
@@ -72,7 +72,7 @@ export default function Home() {
             <span className="text-zinc-500"> in your browser.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-zinc-400">
-            Click beats to build 鼓心, 鼓边 and 鼓圆 rhythms, hear them
+            Click beats to build 鼓心, 鼓边 and 鼓棒 rhythms, hear them
             instantly, and export a score worthy of the stage.
           </p>
           <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
