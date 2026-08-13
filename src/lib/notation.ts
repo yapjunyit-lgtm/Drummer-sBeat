@@ -73,6 +73,8 @@ export const VEX_DURATION: Record<DurationId, string> = {
    enough that the first measure's notes clear the 4/4 time signature
    without squeezing the note area or shrinking the input boxes. */
 const NOTE_FONT_SIZE = 13;
+/* Rest symbols (空拍 𝄽 / 半空拍 𝄾) render at half the normal note size. */
+const REST_FONT_SIZE = 8;
 /* Noteheads are drawn larger than the rest of the note (stems, rests stay
    compact) so the ● ✕ ▷ symbols read clearly. */
 const NOTEHEAD_FONT_SIZE = 16;
@@ -318,8 +320,8 @@ export function buildMeasureTickables(
     for (const r of REST_ORDER) {
       while (left >= r.slots) {
         const rest = new VF.StaveNote({ keys: ["e/4"], duration: r.vex });
-        rest.setFont({ size: NOTE_FONT_SIZE });
-        for (const nh of rest.noteHeads) nh.setFont({ size: NOTE_FONT_SIZE });
+        rest.setFont({ size: REST_FONT_SIZE });
+        for (const nh of rest.noteHeads) nh.setFont({ size: REST_FONT_SIZE });
         tickables.push(rest);
         positions.push({ tickable: rest, slot: at, span: r.slots });
         at += r.slots;
