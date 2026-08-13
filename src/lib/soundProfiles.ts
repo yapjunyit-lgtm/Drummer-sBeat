@@ -263,7 +263,7 @@ export async function buildVoiceSet(profileId: string): Promise<VoiceSet> {
         volume: -4,
       });
     const edge =
-      (await makeSampleVoice("/samples/gu-bian.wav", -7, {
+      (await makeSampleVoice("/samples/gu-bian.wav", -3, {
         // Brighter: pitch up ~2 semitones + highpass.
         playbackRate: 1.12,
         highpass: 2100,
@@ -275,7 +275,7 @@ export async function buildVoiceSet(profileId: string): Promise<VoiceSet> {
         q: 1.2,
         decay: 0.18,
         release: 0.08,
-        volume: -6,
+        volume: -2,
       });
     const rim =
       (await makeSampleVoice("/samples/gu-bang.wav", -11)) ??
