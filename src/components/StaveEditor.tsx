@@ -443,6 +443,98 @@ function SlotCell({
 /* Editor                                                              */
 /* ------------------------------------------------------------------ */
 
+/* Engine voice: every zone exposes the same trigger API. */
+interface EngineZoneVoice {
+  volume: Tone.Param<"decibels">;
+  triggerAttackRelease: (duration: string, time?: number) => void;
+  dispose: () => void;
+}
+
+/* Load a drum sample (public/samples) as a retriggerable voice, with
+   optional pitch/colour processing (playbackRate, lowpass, highpass). */
+async function buildSampleZoneVoice(
+  url: string,
+  volume: number,
+  opts?: {
+    playbackRate?: number;
+    lowpass?: number;
+    highpass?: number;
+  }
+): Promise<EngineZoneVoice | null> {
+  try {
+    const player = new Tone.Player({
+      url,
+      loop: false,
+      playbackRate: opts?.playbackRate ?? 1,
+    });
+    const out = new Tone.Volume(volume).toDestination();
+    const fx: Tone.ToneAudioNode[] = [];
+    if (opts?.lowpass) {
+      fx.push(
+        new Tone.Filter({ type: "lowpass", frequency: opts.lowpass, Q: 0.7 })
+      );
+    }
+    if (opts?.highpass) {
+      fx.push(
+        new Tone.Filter({ type: "highpass", frequency: opts.highpass, Q: 0.7 })
+      );
+    }
+    player.chain(...fx, out);
+    await player.loaded;
+    return {
+      volume: out.volume,
+      triggerAttackRelease: (_duration, time) => {
+        player.start(time ?? Tone.now());
+      },
+      dispose: () => {
+        player.dispose();
+        for (const f of fx) f.dispose();
+        out.dispose();
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* Synth fallbacks (used if the samples cannot be loaded). */
+function buildSynthCenterVoice(): EngineZoneVoice {
+  const synth = new Tone.MembraneSynth({
+    pitchDecay: 0.05,
+    octaves: 3,
+    envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
+  }).toDestination();
+  synth.volume.value = -4;
+  return {
+    volume: synth.volume,
+    triggerAttackRelease: (duration, time) =>
+      synth.triggerAttackRelease("C2", duration, time),
+    dispose: () => synth.dispose(),
+  };
+}
+
+function buildSynthEdgeVoice(): EngineZoneVoice {
+  const filter = new Tone.Filter({
+    type: "bandpass",
+    frequency: 1800,
+    Q: 1.2,
+  }).toDestination();
+  const noise = new Tone.NoiseSynth({
+    noise: { type: "pink" },
+    envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
+  }).connect(filter);
+  noise.volume.value = -6;
+  return {
+    volume: noise.volume,
+    triggerAttackRelease: (duration, time) =>
+      noise.triggerAttackRelease(duration, time),
+    dispose: () => {
+      noise.dispose();
+      filter.dispose();
+    },
+  };
+}
+
 export default function StaveEditor() {
   const router = useRouter();
   const { status: authStatus, user } = useAuth();
@@ -587,13 +679,9 @@ export default function StaveEditor() {
   const lastFollowMeasure = useRef<number | null>(null);
   const engineRef = useRef<{
     drummers: {
-      center: Tone.MembraneSynth;
-      edge: Tone.NoiseSynth;
-      rim: {
-        volume: Tone.Param<"decibels">;
-        triggerAttackRelease: (duration: string, time?: number) => void;
-        dispose: () => void;
-      };
+      center: EngineZoneVoice;
+      edge: EngineZoneVoice;
+      rim: EngineZoneVoice;
     }[];
   } | null>(null);
 
@@ -1365,23 +1453,18 @@ export default function StaveEditor() {
     const base = engineRef.current ?? { drummers: [] };
     while (base.drummers.length < count) {
       // One voice per drummer so each has an independent volume.
-      const center = new Tone.MembraneSynth({
-        pitchDecay: 0.05,
-        octaves: 3,
-        envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
-      }).toDestination();
-      center.volume.value = -4;
-
-      const edgeFilter = new Tone.Filter({
-        type: "bandpass",
-        frequency: 1800,
-        Q: 1.2,
-      }).toDestination();
-      const edge = new Tone.NoiseSynth({
-        noise: { type: "pink" },
-        envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
-      }).connect(edgeFilter);
-      edge.volume.value = -6;
+      // 鼓心 + 鼓边 use the approved Real Kit samples (bassier 鼓心,
+      // brighter 鼓边); fall back to synthesis if a sample fails to load.
+      const center =
+        (await buildSampleZoneVoice("/samples/gu-xin.wav", -5, {
+          playbackRate: 0.88,
+          lowpass: 320,
+        })) ?? buildSynthCenterVoice();
+      const edge =
+        (await buildSampleZoneVoice("/samples/gu-bian.wav", -7, {
+          playbackRate: 1.12,
+          highpass: 2100,
+        })) ?? buildSynthEdgeVoice();
 
       // 鼓棒 (Dik): dry two-stick click — a very short white-noise burst
       // through a highpass plus a 2.4kHz wood tick (selected in Sound Lab).
@@ -1523,7 +1606,7 @@ export default function StaveEditor() {
           if (fired.has(key)) continue;
           fired.add(key);
           if (zone.id === "center") {
-            voice.center.triggerAttackRelease("C2", "8n", t);
+            voice.center.triggerAttackRelease("8n", t);
           } else if (zone.id === "edge") {
             voice.edge.triggerAttackRelease("8n", t);
           } else if (zone.id === "rim") {
