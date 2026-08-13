@@ -462,8 +462,12 @@ async function buildSampleZoneVoice(
   }
 ): Promise<EngineZoneVoice | null> {
   try {
+    // Load the buffer FIRST (await the promise), then hand it to the Player —
+    // player.loaded is a boolean, not a Promise, so awaiting it returned
+    // instantly and playback could race ahead of the sample load.
+    const buffer = await Tone.ToneAudioBuffer.fromUrl(url);
     const player = new Tone.Player({
-      url,
+      url: buffer,
       loop: false,
       playbackRate: opts?.playbackRate ?? 1,
     });
@@ -480,7 +484,6 @@ async function buildSampleZoneVoice(
       );
     }
     player.chain(...fx, out);
-    await player.loaded;
     return {
       volume: out.volume,
       triggerAttackRelease: (_duration, time) => {
@@ -1457,11 +1460,12 @@ export default function StaveEditor() {
       // brighter 鼓边); fall back to synthesis if a sample fails to load.
       const center =
         (await buildSampleZoneVoice("/samples/gu-xin.wav", -5, {
-          playbackRate: 0.88,
-          lowpass: 320,
+          // Approved: more solid — mid body through, tighter pitch.
+          playbackRate: 0.9,
+          lowpass: 800,
         })) ?? buildSynthCenterVoice();
       const edge =
-        (await buildSampleZoneVoice("/samples/gu-bian.wav", -7, {
+        (await buildSampleZoneVoice("/samples/gu-bian.wav", -3, {
           playbackRate: 1.12,
           highpass: 2100,
         })) ?? buildSynthEdgeVoice();
