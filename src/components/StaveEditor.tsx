@@ -971,7 +971,9 @@ export default function StaveEditor() {
             ctx.lineTo(PAGE_MARGIN_X, staffBottomY);
             ctx.stroke();
             // Thick system bracket with top and bottom hooks.
-            const bx = PAGE_MARGIN_X - 16;
+            // Sit clear of the D1/D2 part labels, which live just inside
+            // the bracket (at x - 20).
+            const bx = PAGE_MARGIN_X - 22;
             ctx.setLineWidth(2.6);
             ctx.beginPath();
             ctx.moveTo(bx, staffTopY);
@@ -1069,7 +1071,9 @@ export default function StaveEditor() {
                 ctx.save();
                 ctx.setFont('bold 9px sans-serif');
                 ctx.setFillStyle(ghost ? `${label}66` : label);
-                ctx.fillText(`D${part + 1}`, x - 26, y + 17);
+                // Inside the system bracket, left of the staff, so the
+                // grouping line never cuts through the label.
+                ctx.fillText(`D${part + 1}`, x - 20, y + 17);
                 ctx.restore();
               }
 
