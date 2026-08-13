@@ -76,6 +76,18 @@ const NOTE_FONT_SIZE = 13;
 /* Noteheads are drawn larger than the rest of the note (stems, rests stay
    compact) so the ● ✕ ▷ symbols read clearly. */
 const NOTEHEAD_FONT_SIZE = 16;
+/* Stem length per duration. Denser groups (16ths/32nds) get taller stems so
+   their beams sit visibly higher than a neighbouring eighth-note group's
+   single beam — the two groups no longer look like one continuous top bar. */
+const STEM_LENGTH: Record<DurationId, number> = {
+  1: 28,
+  2: 28,
+  q: 28,
+  8: 28,
+  16: 33,
+  32: 33,
+  "8t": 28,
+};
 
 /* Largest rest that fits a gap: whole → half → quarter → eighth → 16th → 32nd. */
 export const REST_ORDER: { vex: string; slots: number }[] = [
@@ -289,8 +301,9 @@ export function buildMeasureTickables(
     });
     sn.setFont({ size: NOTE_FONT_SIZE });
     // Compact stems: 35px was too tall, 22px too short — 28px is the
-    // middle ground.
-    sn.setStemLength(28);
+    // middle ground, with per-duration lengths so group beams land at
+    // distinct heights.
+    sn.setStemLength(STEM_LENGTH[note.duration] ?? 28);
     // These percussion notes float on the lowest staff line, so point their
     // stems upward; downward stems would run through the input boxes that
     // sit just below the notes. (setStemDirection snapshots the stem
