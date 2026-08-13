@@ -3677,7 +3677,7 @@ export default function StaveEditor() {
                           // The music-glyph rest symbols (𝄽 𝄾) read tiny at
                           // the default size — render them larger.
                           pt.id === "rest" || pt.id === "halfRest"
-                            ? "text-lg leading-none"
+                            ? "text-2xl leading-none"
                             : "",
                         ].join(" ")}
                       >
