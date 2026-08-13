@@ -3364,24 +3364,100 @@ export default function StaveEditor() {
                 label="Rhythm Patterns 节奏型"
                 className="col-span-12 sm:col-span-5"
               >
-                <div className="grid w-full grid-cols-4 gap-1">
-                  {PATTERNS.filter((pt) => !pt.zones).map((pt) => (
-                    <button
-                      key={pt.id}
-                      onClick={() => choosePattern(pt.id)}
-                      aria-pressed={pattern === pt.id && !paintMode}
-                      title={pt.label}
-                      className={[
-                        "flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs transition-colors",
-                        pattern === pt.id && !paintMode
-                          ? "border-amber-500 bg-amber-500/15 text-amber-300"
-                          : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
-                      ].join(" ")}
-                    >
-                      <span className="shrink-0 font-mono">{pt.short}</span>
-                      <span className="truncate">{pt.label}</span>
-                    </button>
-                  ))}
+                <div className="w-full space-y-2">
+                  {/* Basic 基础拍: one visual block per beat — the hit-count
+                      symbols (● vs ●●●●) make 二连音 and 四连音 unmistakably
+                      different. */}
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                      Basic 基础拍
+                    </p>
+                    <div className="grid w-full grid-cols-4 gap-1">
+                      {(["single", "duplet", "triplet", "quad"] as const)
+                        .map((id) => PATTERNS.find((pt) => pt.id === id)!)
+                        .map((pt) => (
+                          <button
+                            key={pt.id}
+                            onClick={() => choosePattern(pt.id)}
+                            aria-pressed={pattern === pt.id && !paintMode}
+                            title={pt.label}
+                            className={[
+                              "flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 text-[10px] transition-colors",
+                              pattern === pt.id && !paintMode
+                                ? "border-amber-500 bg-amber-500/15 text-amber-300"
+                                : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
+                            ].join(" ")}
+                          >
+                            <span className="text-sm leading-none tracking-tight">
+                              {pt.short}
+                            </span>
+                            <span className="w-full truncate text-center text-[10px] text-zinc-400">
+                              {pt.label}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Accent combos 组合拍: asymmetric groupings. */}
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                      Accent Combos 组合拍
+                    </p>
+                    <div className="grid w-full grid-cols-2 gap-1">
+                      {(["fastSlow", "slowFast"] as const)
+                        .map((id) => PATTERNS.find((pt) => pt.id === id)!)
+                        .map((pt) => (
+                          <button
+                            key={pt.id}
+                            onClick={() => choosePattern(pt.id)}
+                            aria-pressed={pattern === pt.id && !paintMode}
+                            title={pt.label}
+                            className={[
+                              "flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs transition-colors",
+                              pattern === pt.id && !paintMode
+                                ? "border-amber-500 bg-amber-500/15 text-amber-300"
+                                : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
+                            ].join(" ")}
+                          >
+                            <span className="shrink-0 font-mono">
+                              {pt.short}
+                            </span>
+                            <span className="truncate">{pt.label}</span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Rests 休止: silence. */}
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                      Rests 休止
+                    </p>
+                    <div className="grid w-full grid-cols-2 gap-1">
+                      {(["rest", "halfRest"] as const)
+                        .map((id) => PATTERNS.find((pt) => pt.id === id)!)
+                        .map((pt) => (
+                          <button
+                            key={pt.id}
+                            onClick={() => choosePattern(pt.id)}
+                            aria-pressed={pattern === pt.id && !paintMode}
+                            title={pt.label}
+                            className={[
+                              "flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs transition-colors",
+                              pattern === pt.id && !paintMode
+                                ? "border-amber-500 bg-amber-500/15 text-amber-300"
+                                : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
+                            ].join(" ")}
+                          >
+                            <span className="shrink-0 font-mono">
+                              {pt.short}
+                            </span>
+                            <span className="truncate">{pt.label}</span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
                 </div>
               </ToolGroup>
               <ToolGroup
