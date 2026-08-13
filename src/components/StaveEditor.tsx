@@ -112,7 +112,7 @@ const CELL_SLOTS = SLOTS / CELLS_PER_MEASURE; // 12 steps per click cell
 const BEATS = 4;
 const MEASURES_PER_SYSTEM = 4; // fixed measures per system line
 
-const SYSTEMS_PER_PAGE = 12; // stave lines per PDF-style page (minimum)
+const SYSTEMS_PER_PAGE = 14; // stave lines per PDF-style page
 const PAGE_W = 860; // A4-ish page at screen scale
 const PAGE_H = 1216;
 const PAGE_MARGIN_X = 48;
@@ -122,9 +122,9 @@ const PAGE_MARGIN_X = 48;
 const NOTE_AREA_INSET = 14;
 const PAGE_MARGIN_TOP = 56;
 const PAGE_MARGIN_BOTTOM = 64;
-const ROW_H = 91; // 12 systems fit within the A4 page height
-const DRUMMER_ROW_STEP = 116; // vertical pitch between stacked drummer rows
-const SYSTEM_EXTRA = 34; // breathing room after a system's last row
+const ROW_H = 78; // tighter single-drummer rows (14 fit the A4 page height)
+const DRUMMER_ROW_STEP = 102; // vertical pitch between stacked drummer rows
+const SYSTEM_EXTRA = 24; // breathing room after a system's last row
 const MAX_MEASURES = 72; // 2 full pages at 9 systems × 4 measures each
 /* Custom notehead glyphs (✕ / ▷) are drawn left-anchored with a fixed
    offset from their grid anchor at the 16pt note font; shifting them back by
@@ -407,7 +407,10 @@ function SlotCell({
       }`}
       style={{
         left: cellLeft + (colW - box) / 2,
-        bottom: 10,
+        // Anchor to the staff line (which sits 80px below the row top), not
+        // the row bottom — so the boxes stay "just below the notes" even
+        // when the row pitch is tightened.
+        top: 90,
         width: box,
         height: box,
       }}
