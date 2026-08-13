@@ -34,7 +34,7 @@ export default function SoundLabPage() {
     await Tone.start();
     let set = voicesRef.current.get(profile.id);
     if (!set) {
-      set = buildVoiceSet(profile.id);
+      set = await buildVoiceSet(profile.id);
       voicesRef.current.set(profile.id, set);
     }
     return set;

@@ -31,6 +31,13 @@ export interface SoundProfile {
 
 export const SOUND_PROFILES: SoundProfile[] = [
   {
+    id: "realKit",
+    name: "Real Kit",
+    zh: "实鼓采样",
+    description:
+      "Single hits extracted from the Chinese kit recording: deep 鼓心, sharp 鼓边, dry 鼓棒 tick. One hit per file.",
+  },
+  {
     id: "current",
     name: "Current",
     zh: "当前音色",
@@ -63,6 +70,27 @@ export const SOUND_PROFILES: SoundProfile[] = [
 /* ------------------------------------------------------------------ */
 /* Builders                                                            */
 /* ------------------------------------------------------------------ */
+
+/* A single drum hit loaded from public/samples (one clean hit per file). */
+async function makeSampleVoice(
+  url: string,
+  volume: number
+): Promise<ZoneVoice | null> {
+  try {
+    const player = new Tone.Player({ url, loop: false });
+    player.volume.value = volume;
+    player.toDestination();
+    await player.loaded;
+    return {
+      volume: player.volume,
+      triggerAttackRelease: (_duration, time) =>
+        player.start(time ?? Tone.now()),
+      dispose: () => player.dispose(),
+    };
+  } catch {
+    return null;
+  }
+}
 
 function makeMembraneVoice(opts: {
   pitch: string;
@@ -193,7 +221,52 @@ function makeLayeredVoice(opts: {
 /* Profiles                                                            */
 /* ------------------------------------------------------------------ */
 
-export function buildVoiceSet(profileId: string): VoiceSet {
+export async function buildVoiceSet(profileId: string): Promise<VoiceSet> {
+  if (profileId === "realKit") {
+    const center =
+      (await makeSampleVoice("/samples/gu-xin.wav", -5)) ??
+      makeMembraneVoice({
+        pitch: "C2",
+        pitchDecay: 0.05,
+        octaves: 3,
+        decay: 0.45,
+        release: 0.2,
+        volume: -4,
+      });
+    const edge =
+      (await makeSampleVoice("/samples/gu-bian.wav", -7)) ??
+      makeNoiseVoice({
+        noiseType: "pink",
+        filterType: "bandpass",
+        frequency: 1800,
+        q: 1.2,
+        decay: 0.18,
+        release: 0.08,
+        volume: -6,
+      });
+    const rim =
+      (await makeSampleVoice("/samples/gu-bang.wav", -11)) ??
+      makeLayeredVoice({
+        noiseType: "white",
+        filterType: "highpass",
+        frequency: 5000,
+        q: 0.7,
+        decay: 0.022,
+        release: 0.015,
+        volume: -11,
+        tones: [{ type: "sine", frequency: 2400, decay: 0.022 }],
+      });
+    return {
+      center,
+      edge,
+      rim,
+      dispose() {
+        center.dispose();
+        edge.dispose();
+        rim.dispose();
+      },
+    };
+  }
   switch (profileId) {
     case "dongDakDik":
       return {
@@ -228,7 +301,7 @@ export function buildVoiceSet(profileId: string): VoiceSet {
           volume: -11,
           tones: [{ type: "sine", frequency: 2400, decay: 0.022 }],
         }),
-        dispose() {
+        dispose(this: VoiceSet) {
           this.center.dispose();
           this.edge.dispose();
           this.rim.dispose();
@@ -268,7 +341,7 @@ export function buildVoiceSet(profileId: string): VoiceSet {
           volume: -11,
           tones: [{ type: "sine", frequency: 3000, decay: 0.018 }],
         }),
-        dispose() {
+        dispose(this: VoiceSet) {
           this.center.dispose();
           this.edge.dispose();
           this.rim.dispose();
@@ -308,7 +381,7 @@ export function buildVoiceSet(profileId: string): VoiceSet {
           volume: -11,
           tones: [{ type: "sine", frequency: 2600, decay: 0.015 }],
         }),
-        dispose() {
+        dispose(this: VoiceSet) {
           this.center.dispose();
           this.edge.dispose();
           this.rim.dispose();
@@ -344,7 +417,7 @@ export function buildVoiceSet(profileId: string): VoiceSet {
           release: 0.04,
           volume: -10,
         }),
-        dispose() {
+        dispose(this: VoiceSet) {
           this.center.dispose();
           this.edge.dispose();
           this.rim.dispose();
