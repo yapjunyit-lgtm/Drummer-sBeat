@@ -440,6 +440,111 @@ function SlotCell({
 }
 
 /* ------------------------------------------------------------------ */
+/* Engine voices                                                       */
+/* ------------------------------------------------------------------ */
+
+interface EngineZoneVoice {
+  volume: Tone.Param<"decibels">;
+  triggerAttackRelease: (duration: string, time?: number) => void;
+  dispose: () => void;
+}
+
+/* Load a drum sample (public/samples) as a retriggerable voice. */
+async function buildSampleZoneVoice(
+  url: string,
+  volume: number
+): Promise<EngineZoneVoice | null> {
+  try {
+    const player = new Tone.Player({ url, loop: false });
+    player.volume.value = volume;
+    player.toDestination();
+    await player.loaded;
+    return {
+      volume: player.volume,
+      triggerAttackRelease: (_duration, time) => {
+        player.start(time ?? Tone.now());
+      },
+      dispose: () => player.dispose(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* Synth fallbacks (used if the samples cannot be loaded). */
+function buildSynthCenterVoice(): EngineZoneVoice {
+  const synth = new Tone.MembraneSynth({
+    pitchDecay: 0.05,
+    octaves: 3,
+    envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
+  }).toDestination();
+  synth.volume.value = -4;
+  return {
+    volume: synth.volume,
+    triggerAttackRelease: (duration, time) =>
+      synth.triggerAttackRelease("C2", duration, time),
+    dispose: () => synth.dispose(),
+  };
+}
+
+function buildSynthEdgeVoice(): EngineZoneVoice {
+  const filter = new Tone.Filter({
+    type: "bandpass",
+    frequency: 1800,
+    Q: 1.2,
+  }).toDestination();
+  const noise = new Tone.NoiseSynth({
+    noise: { type: "pink" },
+    envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
+  }).connect(filter);
+  noise.volume.value = -6;
+  return {
+    volume: noise.volume,
+    triggerAttackRelease: (duration, time) =>
+      noise.triggerAttackRelease(duration, time),
+    dispose: () => {
+      noise.dispose();
+      filter.dispose();
+    },
+  };
+}
+
+/* 鼓棒 (Dik): dry two-stick click — very short white noise through a
+   highpass plus a 2.4kHz wood tick. */
+function buildRimVoice(): EngineZoneVoice {
+  const out = new Tone.Volume(-11).toDestination();
+  const noise = new Tone.NoiseSynth({
+    noise: { type: "white" },
+    envelope: { attack: 0.001, decay: 0.022, sustain: 0, release: 0.015 },
+  });
+  const hp = new Tone.Filter({ type: "highpass", frequency: 5000, Q: 0.7 });
+  noise.chain(hp, out);
+  const tick = new Tone.Oscillator({ type: "sine", frequency: 2400 });
+  const tickEnv = new Tone.AmplitudeEnvelope({
+    attack: 0.001,
+    decay: 0.022,
+    sustain: 0,
+    release: 0.015,
+  });
+  tick.chain(tickEnv, out);
+  tick.start();
+  return {
+    volume: out.volume,
+    triggerAttackRelease: (duration, time) => {
+      noise.triggerAttackRelease(duration, time);
+      tickEnv.triggerAttackRelease(0.022, time);
+    },
+    dispose: () => {
+      noise.dispose();
+      hp.dispose();
+      tick.dispose();
+      tickEnv.dispose();
+      out.dispose();
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Editor                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -587,13 +692,9 @@ export default function StaveEditor() {
   const lastFollowMeasure = useRef<number | null>(null);
   const engineRef = useRef<{
     drummers: {
-      center: Tone.MembraneSynth;
-      edge: Tone.NoiseSynth;
-      rim: {
-        volume: Tone.Param<"decibels">;
-        triggerAttackRelease: (duration: string, time?: number) => void;
-        dispose: () => void;
-      };
+      center: EngineZoneVoice;
+      edge: EngineZoneVoice;
+      rim: EngineZoneVoice;
     }[];
   } | null>(null);
 
@@ -1365,61 +1466,15 @@ export default function StaveEditor() {
     const base = engineRef.current ?? { drummers: [] };
     while (base.drummers.length < count) {
       // One voice per drummer so each has an independent volume.
-      const center = new Tone.MembraneSynth({
-        pitchDecay: 0.05,
-        octaves: 3,
-        envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
-      }).toDestination();
-      center.volume.value = -4;
-
-      const edgeFilter = new Tone.Filter({
-        type: "bandpass",
-        frequency: 1800,
-        Q: 1.2,
-      }).toDestination();
-      const edge = new Tone.NoiseSynth({
-        noise: { type: "pink" },
-        envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
-      }).connect(edgeFilter);
-      edge.volume.value = -6;
-
-      // 鼓棒 (Dik): dry two-stick click — a very short white-noise burst
-      // through a highpass plus a 2.4kHz wood tick (selected in Sound Lab).
-      const rimOut = new Tone.Volume(-11).toDestination();
-      const rimNoise = new Tone.NoiseSynth({
-        noise: { type: "white" },
-        envelope: { attack: 0.001, decay: 0.022, sustain: 0, release: 0.015 },
-      });
-      const rimHp = new Tone.Filter({
-        type: "highpass",
-        frequency: 5000,
-        Q: 0.7,
-      });
-      rimNoise.chain(rimHp, rimOut);
-      const rimTick = new Tone.Oscillator({ type: "sine", frequency: 2400 });
-      const rimTickEnv = new Tone.AmplitudeEnvelope({
-        attack: 0.001,
-        decay: 0.022,
-        sustain: 0,
-        release: 0.015,
-      });
-      rimTick.chain(rimTickEnv, rimOut);
-      rimTick.start();
-      const rim = {
-        volume: rimOut.volume,
-        triggerAttackRelease: (duration: string, time?: number) => {
-          rimNoise.triggerAttackRelease(duration, time);
-          rimTickEnv.triggerAttackRelease(0.022, time);
-        },
-        dispose: () => {
-          rimNoise.dispose();
-          rimHp.dispose();
-          rimTick.dispose();
-          rimTickEnv.dispose();
-          rimOut.dispose();
-        },
-      };
-
+      // 鼓心 + 鼓边 use the real samples extracted from the Chinese kit;
+      // if they fail to load, fall back to the previous synthesis.
+      const center =
+        (await buildSampleZoneVoice("/samples/gu-xin.wav", -5)) ??
+        buildSynthCenterVoice();
+      const edge =
+        (await buildSampleZoneVoice("/samples/gu-bian.wav", -7)) ??
+        buildSynthEdgeVoice();
+      const rim = buildRimVoice();
       base.drummers.push({ center, edge, rim });
     }
     engineRef.current = base;
@@ -1523,7 +1578,7 @@ export default function StaveEditor() {
           if (fired.has(key)) continue;
           fired.add(key);
           if (zone.id === "center") {
-            voice.center.triggerAttackRelease("C2", "8n", t);
+            voice.center.triggerAttackRelease("8n", t);
           } else if (zone.id === "edge") {
             voice.edge.triggerAttackRelease("8n", t);
           } else if (zone.id === "rim") {
