@@ -589,7 +589,11 @@ export default function StaveEditor() {
     drummers: {
       center: Tone.MembraneSynth;
       edge: Tone.NoiseSynth;
-      rim: Tone.NoiseSynth;
+      rim: {
+        volume: Tone.Param<"decibels">;
+        triggerAttackRelease: (duration: string, time?: number) => void;
+        dispose: () => void;
+      };
     }[];
   } | null>(null);
 
@@ -1379,16 +1383,42 @@ export default function StaveEditor() {
       }).connect(edgeFilter);
       edge.volume.value = -6;
 
-      const rimFilter = new Tone.Filter({
-        type: "highpass",
-        frequency: 4500,
-        Q: 0.8,
-      }).toDestination();
-      const rim = new Tone.NoiseSynth({
+      // 鼓棒 (Dik): dry two-stick click — a very short white-noise burst
+      // through a highpass plus a 2.4kHz wood tick (selected in Sound Lab).
+      const rimOut = new Tone.Volume(-11).toDestination();
+      const rimNoise = new Tone.NoiseSynth({
         noise: { type: "white" },
-        envelope: { attack: 0.001, decay: 0.07, sustain: 0, release: 0.04 },
-      }).connect(rimFilter);
-      rim.volume.value = -10;
+        envelope: { attack: 0.001, decay: 0.022, sustain: 0, release: 0.015 },
+      });
+      const rimHp = new Tone.Filter({
+        type: "highpass",
+        frequency: 5000,
+        Q: 0.7,
+      });
+      rimNoise.chain(rimHp, rimOut);
+      const rimTick = new Tone.Oscillator({ type: "sine", frequency: 2400 });
+      const rimTickEnv = new Tone.AmplitudeEnvelope({
+        attack: 0.001,
+        decay: 0.022,
+        sustain: 0,
+        release: 0.015,
+      });
+      rimTick.chain(rimTickEnv, rimOut);
+      rimTick.start();
+      const rim = {
+        volume: rimOut.volume,
+        triggerAttackRelease: (duration: string, time?: number) => {
+          rimNoise.triggerAttackRelease(duration, time);
+          rimTickEnv.triggerAttackRelease(0.022, time);
+        },
+        dispose: () => {
+          rimNoise.dispose();
+          rimHp.dispose();
+          rimTick.dispose();
+          rimTickEnv.dispose();
+          rimOut.dispose();
+        },
+      };
 
       base.drummers.push({ center, edge, rim });
     }
