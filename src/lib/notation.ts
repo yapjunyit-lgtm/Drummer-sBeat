@@ -116,14 +116,14 @@ export const PATTERNS: {
   {
     id: "single",
     label: "单音 1击/拍",
-    short: "●",
+    short: "1",
     span: SLOTS_PER_BEAT,
     hits: [{ offset: 0, duration: "q" }],
   },
   {
     id: "duplet",
     label: "二连音 2击/拍",
-    short: "●●",
+    short: "2",
     span: SLOTS_PER_BEAT,
     hits: [
       { offset: 0, duration: "8" },
@@ -133,7 +133,7 @@ export const PATTERNS: {
   {
     id: "triplet",
     label: "三连音 3击/拍",
-    short: "●●●",
+    short: "3",
     span: SLOTS_PER_BEAT,
     hits: [
       { offset: 0, duration: "8t" },
@@ -144,7 +144,7 @@ export const PATTERNS: {
   {
     id: "quad",
     label: "四连音 4击/拍",
-    short: "●●●●",
+    short: "4",
     span: SLOTS_PER_BEAT,
     hits: [
       { offset: 0, duration: "16" },

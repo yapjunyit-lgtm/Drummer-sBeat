@@ -125,6 +125,9 @@ const PAGE_MARGIN_BOTTOM = 64;
 const ROW_H = 78; // tighter single-drummer rows (14 fit the A4 page height)
 const DRUMMER_ROW_STEP = 102; // vertical pitch between stacked drummer rows
 const SYSTEM_EXTRA = 24; // breathing room after a system's last row
+/* Fixed gap between beats inside a measure, so neighbouring rhythm groups
+   (e.g. 二连音 followed by 四连音) read as clearly separate. */
+const BEAT_GAP = 7;
 const MAX_MEASURES = 72; // 2 full pages at 9 systems × 4 measures each
 /* Custom notehead glyphs (✕ / ▷) are drawn left-anchored with a fixed
    offset from their grid anchor at the 16pt note font; shifting them back by
@@ -389,15 +392,20 @@ function SlotCell({
   const { setNodeRef, isOver } = useDroppable({
     id: `slot:${measure}:${index}:${part}`,
   });
-  const colW = fullWidth
-    ? metrics.w / CELLS_PER_MEASURE
-    : (metrics.endX - metrics.startX) / CELLS_PER_MEASURE;
+  const uniformColW = (metrics.endX - metrics.startX) / CELLS_PER_MEASURE;
+  const colW = fullWidth ? metrics.w / CELLS_PER_MEASURE : uniformColW;
   // A compact square target sitting just below the notes, so the score
   // itself stays visible while each beat slot is still clickable.
   const box = Math.min(20, Math.max(12, colW - 5));
+  // Match the beat-aware note layout: half-beat cells are centred within
+  // their beat's band, with the same gap between beats as the notes.
+  const beat = Math.floor(index / 2);
+  const inBeat = index % 2;
+  const beatW = (metrics.endX - metrics.startX - 3 * BEAT_GAP) / 4;
+  const cellW = beatW / 2;
   const cellLeft = fullWidth
     ? metrics.x + index * colW
-    : metrics.startX + index * colW;
+    : metrics.startX + beat * (beatW + BEAT_GAP) + inBeat * cellW;
   return (
     <button
       ref={setNodeRef}
@@ -1036,9 +1044,15 @@ export default function StaveEditor() {
                 // half-beat cells per measure).
                 const noteStart = stave.getNoteStartX();
                 const noteEnd = stave.getNoteEndX();
+                // Beat-aware layout: each beat's notes are centred within
+                // their own band, with BEAT_GAP of air between beats.
+                const noteArea = noteEnd - noteStart;
+                const beatW = (noteArea - 3 * BEAT_GAP) / 4;
                 for (const { tickable, slot, span } of positions) {
-                  const center = (slot + span / 2) / SLOTS;
-                  let x = center * (noteEnd - noteStart);
+                  const beat = Math.floor(slot / SLOTS_PER_BEAT);
+                  const inBeat = slot - beat * SLOTS_PER_BEAT;
+                  const center = (inBeat + span / 2) / SLOTS_PER_BEAT;
+                  let x = beat * (beatW + BEAT_GAP) + center * beatW;
                   // Every notehead (●, ✕, ▷ and rests) is a Bravura glyph
                   // drawn left-anchored with a fixed offset from its grid
                   // anchor, so shift it back to centre the visible symbol on
@@ -3364,100 +3378,24 @@ export default function StaveEditor() {
                 label="Rhythm Patterns 节奏型"
                 className="col-span-12 sm:col-span-5"
               >
-                <div className="w-full space-y-2">
-                  {/* Basic 基础拍: one visual block per beat — the hit-count
-                      symbols (● vs ●●●●) make 二连音 and 四连音 unmistakably
-                      different. */}
-                  <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                      Basic 基础拍
-                    </p>
-                    <div className="grid w-full grid-cols-4 gap-1">
-                      {(["single", "duplet", "triplet", "quad"] as const)
-                        .map((id) => PATTERNS.find((pt) => pt.id === id)!)
-                        .map((pt) => (
-                          <button
-                            key={pt.id}
-                            onClick={() => choosePattern(pt.id)}
-                            aria-pressed={pattern === pt.id && !paintMode}
-                            title={pt.label}
-                            className={[
-                              "flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 text-[10px] transition-colors",
-                              pattern === pt.id && !paintMode
-                                ? "border-amber-500 bg-amber-500/15 text-amber-300"
-                                : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
-                            ].join(" ")}
-                          >
-                            <span className="text-sm leading-none tracking-tight">
-                              {pt.short}
-                            </span>
-                            <span className="w-full truncate text-center text-[10px] text-zinc-400">
-                              {pt.label}
-                            </span>
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-
-                  {/* Accent combos 组合拍: asymmetric groupings. */}
-                  <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                      Accent Combos 组合拍
-                    </p>
-                    <div className="grid w-full grid-cols-2 gap-1">
-                      {(["fastSlow", "slowFast"] as const)
-                        .map((id) => PATTERNS.find((pt) => pt.id === id)!)
-                        .map((pt) => (
-                          <button
-                            key={pt.id}
-                            onClick={() => choosePattern(pt.id)}
-                            aria-pressed={pattern === pt.id && !paintMode}
-                            title={pt.label}
-                            className={[
-                              "flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs transition-colors",
-                              pattern === pt.id && !paintMode
-                                ? "border-amber-500 bg-amber-500/15 text-amber-300"
-                                : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
-                            ].join(" ")}
-                          >
-                            <span className="shrink-0 font-mono">
-                              {pt.short}
-                            </span>
-                            <span className="truncate">{pt.label}</span>
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-
-                  {/* Rests 休止: silence. */}
-                  <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                      Rests 休止
-                    </p>
-                    <div className="grid w-full grid-cols-2 gap-1">
-                      {(["rest", "halfRest"] as const)
-                        .map((id) => PATTERNS.find((pt) => pt.id === id)!)
-                        .map((pt) => (
-                          <button
-                            key={pt.id}
-                            onClick={() => choosePattern(pt.id)}
-                            aria-pressed={pattern === pt.id && !paintMode}
-                            title={pt.label}
-                            className={[
-                              "flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs transition-colors",
-                              pattern === pt.id && !paintMode
-                                ? "border-amber-500 bg-amber-500/15 text-amber-300"
-                                : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
-                            ].join(" ")}
-                          >
-                            <span className="shrink-0 font-mono">
-                              {pt.short}
-                            </span>
-                            <span className="truncate">{pt.label}</span>
-                          </button>
-                        ))}
-                    </div>
-                  </div>
+                <div className="grid w-full grid-cols-4 gap-1">
+                  {PATTERNS.filter((pt) => !pt.zones).map((pt) => (
+                    <button
+                      key={pt.id}
+                      onClick={() => choosePattern(pt.id)}
+                      aria-pressed={pattern === pt.id && !paintMode}
+                      title={pt.label}
+                      className={[
+                        "flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs transition-colors",
+                        pattern === pt.id && !paintMode
+                          ? "border-amber-500 bg-amber-500/15 text-amber-300"
+                          : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
+                      ].join(" ")}
+                    >
+                      <span className="shrink-0 font-mono">{pt.short}</span>
+                      <span className="truncate">{pt.label}</span>
+                    </button>
+                  ))}
                 </div>
               </ToolGroup>
               <ToolGroup
