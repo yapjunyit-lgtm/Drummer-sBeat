@@ -3671,7 +3671,18 @@ export default function StaveEditor() {
                           : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100",
                       ].join(" ")}
                     >
-                      <span className="shrink-0 font-mono">{pt.short}</span>
+                      <span
+                        className={[
+                          "shrink-0 font-mono",
+                          // The music-glyph rest symbols (𝄽 𝄾) read tiny at
+                          // the default size — render them larger.
+                          pt.id === "rest" || pt.id === "halfRest"
+                            ? "text-lg leading-none"
+                            : "",
+                        ].join(" ")}
+                      >
+                        {pt.short}
+                      </span>
                       <span className="truncate">{pt.label}</span>
                     </button>
                   ))}
