@@ -942,11 +942,55 @@ export default function StaveEditor() {
             MEASURES_PER_SYSTEM,
             measureCount - sys * MEASURES_PER_SYSTEM
           );
+          /* MuseScore-style system grouping: when a system has more than one
+             staff, draw a shared system-start barline spanning every row plus
+             a thick bracket on the left (with top/bottom hooks). Solo
+             sections keep a single ungrouped line. */
+          let sysRows = drummerCount;
+          if (viewMode) {
+            sysRows = 1;
+            for (let c = 0; c < cols; c++) {
+              sysRows = Math.max(
+                sysRows,
+                renderPartsFor(sys * MEASURES_PER_SYSTEM + c).length
+              );
+            }
+          }
+          const sysRowTop =
+            PAGE_MARGIN_TOP + headerOffset + pageSysOffsets[p][sys - sysStart];
+          if (sysRows >= 2) {
+            const staffTopY = sysRowTop + 40;
+            const staffBottomY =
+              sysRowTop + (sysRows - 1) * DRUMMER_ROW_STEP + 80;
+            ctx.save();
+            ctx.setLineWidth(1.2);
+            ctx.setStrokeStyle("#18181b");
+            // Shared system-start barline, continuous through the row gaps.
+            ctx.beginPath();
+            ctx.moveTo(PAGE_MARGIN_X, staffTopY);
+            ctx.lineTo(PAGE_MARGIN_X, staffBottomY);
+            ctx.stroke();
+            // Thick system bracket with top and bottom hooks.
+            const bx = PAGE_MARGIN_X - 16;
+            ctx.setLineWidth(2.6);
+            ctx.beginPath();
+            ctx.moveTo(bx, staffTopY);
+            ctx.lineTo(bx, staffBottomY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(bx, staffTopY);
+            ctx.lineTo(bx + 6, staffTopY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(bx, staffBottomY);
+            ctx.lineTo(bx + 6, staffBottomY);
+            ctx.stroke();
+            ctx.restore();
+          }
           for (let c = 0; c < cols; c++) {
             const m = sys * MEASURES_PER_SYSTEM + c;
             const x = PAGE_MARGIN_X + c * measureW;
-            const rowTop =
-              PAGE_MARGIN_TOP + headerOffset + pageSysOffsets[p][sys - sysStart];
+            const rowTop = sysRowTop;
             // Edit mode: every drummer row is shown (inactive rows are
             // ghosted). View mode: only active drummers get a row, so
             // measures with fewer players show fewer lines.
