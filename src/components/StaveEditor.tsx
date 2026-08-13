@@ -1093,6 +1093,21 @@ export default function StaveEditor() {
           }
         }
 
+        // Thicken the ✕ (edge) and ▷ (rim) notehead glyphs so their stroke
+        // weight matches the filled ● (center) notehead. The glyphs are SVG
+        // <text> elements with no stroke, so an outline of the same ink
+        // colour makes them visibly bolder without changing their shapes.
+        const svgEl = target.querySelector("svg");
+        if (svgEl) {
+          for (const t of svgEl.querySelectorAll("text")) {
+            const glyph = t.textContent ?? "";
+            if (glyph === "\uE0A9" || glyph === "\uE0C1") {
+              t.setAttribute("stroke", "#18181b");
+              t.setAttribute("stroke-width", "1.4");
+            }
+          }
+        }
+
         // Page number at the bottom, like a printed page.
         ctx.save();
         ctx.setFont("11px sans-serif");
