@@ -44,7 +44,7 @@ export default function SoundLabPage() {
     const voices = await getVoices(profile);
     const now = Tone.now();
     if (zone === "center") {
-      voices.center.triggerAttackRelease(profile.centerNote, "8n", now);
+      voices.center.triggerAttackRelease("8n", now);
     } else if (zone === "edge") {
       voices.edge.triggerAttackRelease("8n", now);
     } else {
@@ -56,10 +56,10 @@ export default function SoundLabPage() {
   const playDemo = async (profile: SoundProfile) => {
     const voices = await getVoices(profile);
     const now = Tone.now();
-    voices.center.triggerAttackRelease(profile.centerNote, "8n", now);
-    voices.edge.triggerAttackRelease("8n", now + 0.26);
-    voices.rim.triggerAttackRelease("32n", now + 0.52);
-    voices.center.triggerAttackRelease(profile.centerNote, "q", now + 0.78);
+    voices.center.triggerAttackRelease("8n", now);
+    voices.edge.triggerAttackRelease("8n", now + 0.45);
+    voices.rim.triggerAttackRelease("32n", now + 0.9);
+    voices.center.triggerAttackRelease("q", now + 1.35);
     setActive({ profile: profile.id, zone: "demo" });
   };
 

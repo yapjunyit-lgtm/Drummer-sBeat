@@ -1,6 +1,11 @@
 /* Sound profile definitions + Tone.js voice builders for the Sound Lab
-   (试听) page. The editor engine reuses the chosen profile's builders.
-   Each profile renders 鼓心 / 鼓边 / 鼓棒 with a distinct character. */
+   (试听) page. All voices share one API: triggerAttackRelease(duration, time).
+
+   The three characters follow the drummers' onomatopoeia:
+     鼓心 = "Dong" — deep pitched bass-drum thump
+     鼓边 = "Dak"  — sharp crack, like a wooden stick breaking
+     鼓棒 = "Dik"  — two sticks clicking together (dry wood tick)
+*/
 
 import * as Tone from "tone";
 
@@ -11,7 +16,7 @@ export interface ZoneVoice {
 }
 
 export interface VoiceSet {
-  center: Tone.MembraneSynth;
+  center: ZoneVoice;
   edge: ZoneVoice;
   rim: ZoneVoice;
   dispose: () => void;
@@ -22,8 +27,6 @@ export interface SoundProfile {
   name: string;
   zh: string;
   description: string;
-  /** Pitch used to trigger the 鼓心 membrane (e.g. "C2", "A1"). */
-  centerNote: string;
 }
 
 export const SOUND_PROFILES: SoundProfile[] = [
@@ -32,47 +35,43 @@ export const SOUND_PROFILES: SoundProfile[] = [
     name: "Current",
     zh: "当前音色",
     description:
-      "The engine as it is now: C2 membrane 鼓心, pink-noise 鼓边, white-noise 鼓棒.",
-    centerNote: "C2",
+      "The engine as deployed now: C2 membrane 鼓心, pink-noise 鼓边, white-noise 鼓棒.",
   },
   {
-    id: "taiko",
-    name: "Taiko Ensemble",
-    zh: "太鼓组合",
+    id: "dongDakDik",
+    name: "Dong · Dak · Dik",
+    zh: "咚 · 哒 · 嘀",
     description:
-      "Deep A1 taiko 鼓心 with long resonance, rimshot 鼓边 with a metallic ring, woodblock 鼓棒.",
-    centerNote: "A1",
+      "鼓心 Dong: deep bass-drum thump. 鼓边 Dak: sharp wooden crack. 鼓棒 Dik: dry two-stick click.",
   },
   {
-    id: "tomSnareClaves",
-    name: "Low Tom · Snare · Claves",
-    zh: "落地鼓 · 军鼓 · 木鱼",
+    id: "dongDakDikDeep",
+    name: "Dong · Dak · Dik (Deep)",
+    zh: "咚 · 哒 · 嘀（低沉）",
     description:
-      "Round low-tom 鼓心, side-stick 鼓边, pitched claves 鼓棒 — the GM percussion mapping.",
-    centerNote: "C2",
+      "A lower, longer-ringing Dong; a brighter, more piercing Dak; a drier, higher Dik.",
   },
   {
-    id: "dryStudio",
-    name: "Dry Studio",
-    zh: "干净工作室",
+    id: "dongDakDikSnappy",
+    name: "Dong · Dak · Dik (Snappy)",
+    zh: "咚 · 哒 · 嘀（清脆）",
     description:
-      "Punchy kick 鼓心, tight electric-snare 鼓边, ultra-short stick click 鼓棒.",
-    centerNote: "G1",
+      "A punchy, short Dong; a very tight Dak crack; an ultra-short Dik tick.",
   },
 ];
 
 /* ------------------------------------------------------------------ */
-/* Small builders                                                      */
+/* Builders                                                            */
 /* ------------------------------------------------------------------ */
 
-function makeMembrane(opts: {
+function makeMembraneVoice(opts: {
   pitch: string;
   pitchDecay: number;
   octaves: number;
   decay: number;
   release: number;
   volume: number;
-}): Tone.MembraneSynth {
+}): ZoneVoice {
   const synth = new Tone.MembraneSynth({
     pitchDecay: opts.pitchDecay,
     octaves: opts.octaves,
@@ -84,7 +83,12 @@ function makeMembrane(opts: {
     },
   }).toDestination();
   synth.volume.value = opts.volume;
-  return synth;
+  return {
+    volume: synth.volume,
+    triggerAttackRelease: (duration, time) =>
+      synth.triggerAttackRelease(opts.pitch, duration, time),
+    dispose: () => synth.dispose(),
+  };
 }
 
 function makeNoiseVoice(opts: {
@@ -124,6 +128,7 @@ function makeNoiseVoice(opts: {
   };
 }
 
+/* Noise crack + a short tonal ping (wood body / stick pitch). */
 function makeLayeredVoice(opts: {
   noiseType: "white" | "pink";
   filterType: "bandpass" | "highpass";
@@ -157,7 +162,7 @@ function makeLayeredVoice(opts: {
       attack: 0.001,
       decay: tone.decay,
       sustain: 0,
-      release: 0.02,
+      release: 0.015,
     });
     osc.chain(env, out);
     osc.start();
@@ -169,7 +174,7 @@ function makeLayeredVoice(opts: {
     triggerAttackRelease: (duration, time) => {
       noise.triggerAttackRelease(duration, time);
       for (const p of pings) {
-        p.env.triggerAttackRelease(Math.max(0.02, p.decay), time);
+        p.env.triggerAttackRelease(Math.max(0.015, p.decay), time);
       }
     },
     dispose: () => {
@@ -190,111 +195,118 @@ function makeLayeredVoice(opts: {
 
 export function buildVoiceSet(profileId: string): VoiceSet {
   switch (profileId) {
-    case "taiko":
+    case "dongDakDik":
       return {
-        center: makeMembrane({
-          pitch: "A1",
-          pitchDecay: 0.12,
-          octaves: 5,
-          decay: 0.75,
-          release: 0.3,
-          volume: -6,
+        // Dong: pitched bass-drum thump with a clear low fundamental.
+        center: makeMembraneVoice({
+          pitch: "D2",
+          pitchDecay: 0.05,
+          octaves: 3,
+          decay: 0.55,
+          release: 0.2,
+          volume: -5,
         }),
+        // Dak: woody crack — short band-passed noise + a low wood body ping.
         edge: makeLayeredVoice({
           noiseType: "pink",
           filterType: "bandpass",
-          frequency: 2400,
-          q: 2.2,
-          decay: 0.14,
-          release: 0.05,
-          volume: -8,
-          tones: [{ type: "triangle", frequency: 2700, decay: 0.09 }],
-        }),
-        rim: makeLayeredVoice({
-          noiseType: "white",
-          filterType: "highpass",
-          frequency: 5200,
-          q: 0.8,
-          decay: 0.035,
-          release: 0.02,
-          volume: -12,
-          tones: [{ type: "sine", frequency: 1900, decay: 0.03 }],
-        }),
-        dispose() {
-          this.center.dispose();
-          this.edge.dispose();
-          this.rim.dispose();
-        },
-      };
-
-    case "tomSnareClaves":
-      return {
-        center: makeMembrane({
-          pitch: "C2",
-          pitchDecay: 0.08,
-          octaves: 4,
-          decay: 0.6,
-          release: 0.2,
-          volume: -6,
-        }),
-        edge: makeLayeredVoice({
-          noiseType: "white",
-          filterType: "bandpass",
-          frequency: 2000,
-          q: 2.5,
-          decay: 0.1,
-          release: 0.04,
-          volume: -8,
-          tones: [{ type: "sine", frequency: 3200, decay: 0.06 }],
-        }),
-        rim: makeLayeredVoice({
-          noiseType: "white",
-          filterType: "highpass",
-          frequency: 3000,
-          q: 0.7,
-          decay: 0.02,
-          release: 0.015,
-          volume: -12,
-          // Claves: the pitched wooden tone is the main character.
-          tones: [
-            { type: "sine", frequency: 1250, decay: 0.06 },
-            { type: "sine", frequency: 2500, decay: 0.03 },
-          ],
-        }),
-        dispose() {
-          this.center.dispose();
-          this.edge.dispose();
-          this.rim.dispose();
-        },
-      };
-
-    case "dryStudio":
-      return {
-        center: makeMembrane({
-          pitch: "G1",
-          pitchDecay: 0.05,
-          octaves: 3,
-          decay: 0.35,
-          release: 0.1,
-          volume: -6,
-        }),
-        edge: makeNoiseVoice({
-          noiseType: "white",
-          filterType: "bandpass",
-          frequency: 2800,
-          q: 3,
-          decay: 0.1,
+          frequency: 1800,
+          q: 1.6,
+          decay: 0.06,
           release: 0.03,
-          volume: -8,
+          volume: -7,
+          tones: [{ type: "sine", frequency: 900, decay: 0.045 }],
         }),
-        rim: makeNoiseVoice({
+        // Dik: dry two-stick click — very short noise + high wood tick.
+        rim: makeLayeredVoice({
+          noiseType: "white",
+          filterType: "highpass",
+          frequency: 5000,
+          q: 0.7,
+          decay: 0.022,
+          release: 0.015,
+          volume: -11,
+          tones: [{ type: "sine", frequency: 2400, decay: 0.022 }],
+        }),
+        dispose() {
+          this.center.dispose();
+          this.edge.dispose();
+          this.rim.dispose();
+        },
+      };
+
+    case "dongDakDikDeep":
+      return {
+        // Dong: lower and longer — a big bass drum.
+        center: makeMembraneVoice({
+          pitch: "G1",
+          pitchDecay: 0.08,
+          octaves: 3,
+          decay: 0.75,
+          release: 0.3,
+          volume: -5,
+        }),
+        // Dak: brighter, more piercing crack.
+        edge: makeLayeredVoice({
+          noiseType: "pink",
+          filterType: "bandpass",
+          frequency: 2600,
+          q: 2,
+          decay: 0.07,
+          release: 0.03,
+          volume: -7,
+          tones: [{ type: "sine", frequency: 1200, decay: 0.05 }],
+        }),
+        // Dik: drier and higher.
+        rim: makeLayeredVoice({
           noiseType: "white",
           filterType: "highpass",
           frequency: 6000,
-          q: 0.8,
+          q: 0.7,
           decay: 0.02,
-          release: 0.015,
-          volume: -12,
+          release: 0.012,
+          volume: -11,
+          tones: [{ type: "sine", frequency: 3000, decay: 0.018 }],
+        }),
+        dispose() {
+          this.center.dispose();
+          this.edge.dispose();
+          this.rim.dispose();
+        },
+      };
+
+    case "dongDakDikSnappy":
+      return {
+        // Dong: punchy and short.
+        center: makeMembraneVoice({
+          pitch: "D2",
+          pitchDecay: 0.03,
+          octaves: 3,
+          decay: 0.35,
+          release: 0.12,
+          volume: -5,
+        }),
+        // Dak: very tight crack.
+        edge: makeLayeredVoice({
+          noiseType: "pink",
+          filterType: "bandpass",
+          frequency: 2200,
+          q: 2.5,
+          decay: 0.04,
+          release: 0.02,
+          volume: -7,
+          tones: [{ type: "sine", frequency: 1500, decay: 0.03 }],
+        }),
+        // Dik: ultra-short tick.
+        rim: makeLayeredVoice({
+          noiseType: "white",
+          filterType: "highpass",
+          frequency: 5500,
+          q: 0.7,
+          decay: 0.015,
+          release: 0.01,
+          volume: -11,
+          tones: [{ type: "sine", frequency: 2600, decay: 0.015 }],
         }),
         dispose() {
           this.center.dispose();
@@ -306,7 +318,7 @@ export function buildVoiceSet(profileId: string): VoiceSet {
     case "current":
     default:
       return {
-        center: makeMembrane({
+        center: makeMembraneVoice({
           pitch: "C2",
           pitchDecay: 0.05,
           octaves: 3,
