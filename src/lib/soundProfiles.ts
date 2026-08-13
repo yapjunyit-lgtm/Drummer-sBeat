@@ -83,8 +83,11 @@ async function makeSampleVoice(
   }
 ): Promise<ZoneVoice | null> {
   try {
+    // Load the buffer first (await the promise) — player.loaded is a
+    // boolean, not a Promise, so awaiting it returned instantly.
+    const buffer = await Tone.ToneAudioBuffer.fromUrl(url);
     const player = new Tone.Player({
-      url,
+      url: buffer,
       loop: false,
       playbackRate: opts?.playbackRate ?? 1,
     });
@@ -101,7 +104,6 @@ async function makeSampleVoice(
       );
     }
     player.chain(...fx, out);
-    await player.loaded;
     return {
       volume: out.volume,
       triggerAttackRelease: (_duration, time) =>
