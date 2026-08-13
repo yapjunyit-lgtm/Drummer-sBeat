@@ -285,9 +285,9 @@ export function buildMeasureTickables(
         note.duration === "8t" ? "8" : VEX_DURATION[note.duration],
     });
     sn.setFont({ size: NOTE_FONT_SIZE });
-    // Shorten the stems (default is 35px) so each note stays compact and
-    // the row doesn't look tall.
-    sn.setStemLength(22);
+    // Compact stems: 35px was too tall, 22px too short — 28px is the
+    // middle ground.
+    sn.setStemLength(28);
     // These percussion notes float on the lowest staff line, so point their
     // stems upward; downward stems would run through the input boxes that
     // sit just below the notes. (setStemDirection snapshots the stem
