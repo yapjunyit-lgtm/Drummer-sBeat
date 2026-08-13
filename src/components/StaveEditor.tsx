@@ -510,6 +510,12 @@ export default function StaveEditor() {
     open: boolean;
     measure: number;
     part: number;
+    /** Free placement position (page index + page coordinates). */
+    page?: number;
+    x?: number;
+    y?: number;
+    /** When editing an existing note, its id. */
+    editId?: string;
   } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   /* "Play From" mode: after pressing the Play From button, the next note
@@ -1088,12 +1094,16 @@ export default function StaveEditor() {
               });
             });
 
-            // Measure notes/comments (like MuseScore staff text), drawn above
-            // the row they annotate.
+            // Legacy measure-anchored notes (no free x/y): drawn above the
+            // row they annotate. Each is wrapped in a group tagged with its
+            // id so it can be clicked to edit and dragged to a new position
+            // (dragging converts it to a free-placed note).
             const noteCanvas = document
               .createElement("canvas")
               .getContext("2d")!;
-            for (const ann of annotations.filter((a) => a.measure === m)) {
+            for (const ann of annotations.filter(
+              (a) => a.measure === m && a.x === undefined
+            )) {
               const part = ann.part ?? 0;
               const annRow = parts.indexOf(part);
               if (annRow < 0) continue;
@@ -1110,13 +1120,39 @@ export default function StaveEditor() {
                 }
                 text += "…";
               }
-              ctx.save();
+              const annGrp = ctx.openGroup(
+                "score-note",
+                ann.id
+              ) as unknown as SVGGElement;
+              annGrp.setAttribute("data-ann-id", ann.id);
+              annGrp.setAttribute("pointer-events", "auto");
               ctx.setFont('italic 12px "Times New Roman", serif');
               ctx.setFillStyle("#64748b");
               ctx.fillText(text, x + 2, annY);
-              ctx.restore();
+              ctx.closeGroup();
             }
           }
+        }
+
+        // Freely placed notes: drawn at their exact stored position.
+        for (const ann of annotations) {
+          if (
+            ann.page !== p ||
+            ann.x === undefined ||
+            ann.y === undefined
+          ) {
+            continue;
+          }
+          const annGrp = ctx.openGroup(
+            "score-note",
+            ann.id
+          ) as unknown as SVGGElement;
+          annGrp.setAttribute("data-ann-id", ann.id);
+          annGrp.setAttribute("pointer-events", "auto");
+          ctx.setFont('italic 12px "Times New Roman", serif');
+          ctx.setFillStyle("#64748b");
+          ctx.fillText(ann.text, ann.x, ann.y);
+          ctx.closeGroup();
         }
 
         // Thicken the ✕ (edge) and ▷ (rim) notehead glyphs so their stroke
@@ -1132,6 +1168,93 @@ export default function StaveEditor() {
               t.setAttribute("stroke-width", "1.4");
             }
           }
+        }
+
+        // Make every score note interactive: click edits it, drag moves it.
+        // Dragging updates the DOM in place (no re-render mid-drag) and
+        // commits the final position on release.
+        for (const annGrp of target.querySelectorAll("g[data-ann-id]")) {
+          const annId = annGrp.getAttribute("data-ann-id");
+          const textEl = annGrp.querySelector("text");
+          if (!annId || !textEl) continue;
+          const ann = annotations.find((a) => a.id === annId);
+          if (!ann) continue;
+          textEl.style.cursor = "move";
+          textEl.style.userSelect = "none";
+          textEl.dataset.moved = "0";
+
+          textEl.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (viewMode) return;
+            const pageEl = target.closest(".score-page") as HTMLElement | null;
+            if (!pageEl) return;
+            const rect = pageEl.getBoundingClientRect();
+            const scale = rect.width / PAGE_W;
+            const startClientX = e.clientX;
+            const startClientY = e.clientY;
+            const origin = annotations.find((a) => a.id === annId);
+            if (!origin) return;
+            let moved = false;
+            let dx = 0;
+            let dy = 0;
+            const onMove = (ev: PointerEvent) => {
+              dx = (ev.clientX - startClientX) / scale;
+              dy = (ev.clientY - startClientY) / scale;
+              if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
+              annGrp.setAttribute(
+                "transform",
+                `translate(${Math.round(dx)},${Math.round(dy)})`
+              );
+            };
+            const onUp = () => {
+              textEl.removeEventListener("pointermove", onMove);
+              textEl.removeEventListener("pointerup", onUp);
+              textEl.dataset.moved = moved ? "1" : "0";
+              if (!moved) return;
+              const bbox = textEl.getBBox();
+              const baseX =
+                origin.x !== undefined
+                  ? origin.x
+                  : bbox.x + bbox.width / 2;
+              const baseY =
+                origin.y !== undefined
+                  ? origin.y
+                  : bbox.y + bbox.height / 2;
+              updateProject((pr) => ({
+                ...pr,
+                annotations: (pr.annotations ?? []).map((a) =>
+                  a.id === annId
+                    ? {
+                        ...a,
+                        page: a.page ?? p,
+                        x: Math.round(baseX + dx),
+                        y: Math.round(baseY + dy),
+                      }
+                    : a
+                ),
+              }));
+            };
+            textEl.setPointerCapture?.(e.pointerId);
+            textEl.addEventListener("pointermove", onMove);
+            textEl.addEventListener("pointerup", onUp);
+          });
+
+          textEl.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (textEl.dataset.moved === "1") return;
+            const a = annotations.find((x) => x.id === annId);
+            if (!a) return;
+            setNoteModal({
+              open: true,
+              measure: a.measure,
+              part: a.part ?? 0,
+              page: a.page,
+              x: a.x,
+              y: a.y,
+              editId: a.id,
+            });
+          });
         }
 
         // Page number at the bottom, like a printed page.
@@ -1169,6 +1292,7 @@ export default function StaveEditor() {
     projectName,
     renderPartsFor,
     systemsTotal,
+    updateProject,
     viewMode,
   ]);
 
@@ -1607,22 +1731,31 @@ export default function StaveEditor() {
     if (!noteModal) return;
     updateProject((p) => {
       const list = p.annotations ?? [];
-      const existing = list.find(
-        (a) =>
-          a.measure === noteModal.measure && (a.part ?? 0) === noteModal.part
-      );
-      const next: ScoreAnnotation[] = existing
-        ? list.map((a) => (a.id === existing.id ? { ...a, text } : a))
-        : [
-            ...list,
-            {
-              id: crypto.randomUUID(),
-              measure: noteModal.measure,
-              part: noteModal.part,
-              text,
-            },
-          ];
-      return { ...p, annotations: next };
+      if (noteModal.editId) {
+        return {
+          ...p,
+          annotations: list.map((a) =>
+            a.id === noteModal.editId ? { ...a, text } : a
+          ),
+        };
+      }
+      const next: ScoreAnnotation = {
+        id: crypto.randomUUID(),
+        measure: noteModal.measure,
+        part: noteModal.part,
+        text,
+      };
+      if (
+        noteModal.page !== undefined &&
+        noteModal.x !== undefined &&
+        noteModal.y !== undefined
+      ) {
+        next.page = noteModal.page;
+        next.x = noteModal.x;
+        next.y = noteModal.y;
+      }
+      const added: ScoreAnnotation[] = [...list, next];
+      return { ...p, annotations: added };
     });
     setNoteModal(null);
   };
@@ -1633,10 +1766,12 @@ export default function StaveEditor() {
       ...p,
       annotations: (p.annotations ?? []).filter(
         (a) =>
-          !(
-            a.measure === noteModal.measure &&
-            (a.part ?? 0) === noteModal.part
-          )
+          noteModal.editId
+            ? a.id !== noteModal.editId
+            : !(
+                a.measure === noteModal.measure &&
+                (a.part ?? 0) === noteModal.part
+              )
       ),
     }));
     setNoteModal(null);
@@ -2218,7 +2353,8 @@ export default function StaveEditor() {
       }
       if (!viewMode) ensureMeasurePart(measure, part);
       if (selected === "note") {
-        setNoteModal({ open: true, measure, part });
+        // Free placement is handled by the page-level click handler, which
+        // records the exact position (anywhere on the score).
         return;
       }
       if (activeGroupId) {
@@ -2249,6 +2385,66 @@ export default function StaveEditor() {
       toggleRowSelection,
       viewMode,
     ]
+  );
+
+  /* Note tool: click anywhere on a score page to place a note at that exact
+     position. Clicking an existing note opens its editor instead. */
+  const handleScorePageClick = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>, p: number) => {
+      if (selected !== "note" || viewMode) return;
+      // Existing notes handle their own click (edit) and drag.
+      if ((e.target as HTMLElement).closest?.("[data-ann-id]")) return;
+      const pageEl = e.currentTarget;
+      const rect = pageEl.getBoundingClientRect();
+      const scale = rect.width / PAGE_W;
+      const px = (e.clientX - rect.left) / scale;
+      const py = (e.clientY - rect.top) / scale;
+
+      // A note already sitting near the click → edit it.
+      const hit = annotations.find(
+        (a) =>
+          a.page === p &&
+          a.x !== undefined &&
+          a.y !== undefined &&
+          Math.abs(px - a.x) < 45 &&
+          Math.abs(py - (a.y - 8)) < 16
+      );
+      if (hit) {
+        setNoteModal({
+          open: true,
+          measure: hit.measure,
+          part: hit.part ?? 0,
+          page: hit.page,
+          x: hit.x,
+          y: hit.y,
+          editId: hit.id,
+        });
+        return;
+      }
+
+      // Otherwise: nearest row gives the measure/drummer label; the note is
+      // stored at the exact clicked coordinates.
+      const row = metrics?.find(
+        (r) =>
+          r.page === p &&
+          px >= r.x &&
+          px <= r.x + r.w &&
+          py >= r.y &&
+          py <= r.y + r.height
+      );
+      const bound = pageBounds[p];
+      const measure =
+        row?.measure ?? (bound ? bound.start * MEASURES_PER_SYSTEM : 0);
+      setNoteModal({
+        open: true,
+        measure,
+        part: row?.part ?? 0,
+        page: p,
+        x: Math.round(px),
+        y: Math.round(py),
+      });
+    },
+    [annotations, metrics, pageBounds, selected, viewMode]
   );
 
   /* ------------------------------------------------------------------ */
@@ -3905,6 +4101,7 @@ export default function StaveEditor() {
           {Array.from({ length: pageCount }, (_, p) => (
             <div
               key={p}
+              onClick={(e) => handleScorePageClick(e, p)}
               className={[
                 "score-page relative overflow-hidden",
                 viewMode && viewLayout === "double" ? "" : "mx-auto",
@@ -4091,15 +4288,18 @@ export default function StaveEditor() {
         open={noteModal?.open ?? false}
         existing={
           noteModal?.open
-            ? (annotations.find(
-                (a) =>
-                  a.measure === noteModal.measure &&
-                  (a.part ?? 0) === noteModal.part
-              ) ?? null)
+            ? (noteModal.editId
+                ? (annotations.find((a) => a.id === noteModal.editId) ?? null)
+                : (annotations.find(
+                    (a) =>
+                      a.measure === noteModal.measure &&
+                      (a.part ?? 0) === noteModal.part
+                  ) ?? null))
             : null
         }
         measureNumber={(noteModal?.measure ?? 0) + 1}
         partNumber={noteModal?.part ?? 0}
+        pageNumber={noteModal?.page ?? null}
         onSave={saveNote}
         onDelete={deleteNote}
         onClose={() => setNoteModal(null)}

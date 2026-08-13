@@ -8,6 +8,8 @@ interface ScoreNoteModalProps {
   existing: ScoreAnnotation | null;
   measureNumber: number;
   partNumber: number;
+  /** Page the note sits on (free placement); null for legacy measure notes. */
+  pageNumber?: number | null;
   onSave: (text: string) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -18,6 +20,7 @@ export default function ScoreNoteModal({
   existing,
   measureNumber,
   partNumber,
+  pageNumber,
   onSave,
   onDelete,
   onClose,
@@ -51,6 +54,9 @@ export default function ScoreNoteModal({
 
         <p className="mb-3 text-xs text-zinc-500">
           Measure 小节 {measureNumber} · Drummer 鼓手 {partNumber + 1}
+          {typeof pageNumber === "number"
+            ? ` · Page 页 ${pageNumber + 1}`
+            : ""}
         </p>
 
         <textarea

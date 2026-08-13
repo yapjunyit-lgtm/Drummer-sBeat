@@ -48,6 +48,12 @@ export interface ScoreAnnotation {
   measure: number; // 0-based measure index
   text: string;
   part?: number; // which drummer row the note belongs to (default 0)
+  /** Free placement: page index + exact coordinates on the page. When
+      present, the note is drawn at this position; otherwise it anchors to
+      the measure row above. */
+  page?: number;
+  x?: number;
+  y?: number;
 }
 
 export interface Project {
