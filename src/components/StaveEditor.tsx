@@ -1515,7 +1515,7 @@ export default function StaveEditor() {
     engine.drummers.forEach((d, i) => {
       const db = drummerVolumeDb(volumes[i]);
       d.center.volume.value = -4 + db;
-      d.edge.volume.value = -6 + db;
+      d.edge.volume.value = -2 + db;
       d.rim.volume.value = -10 + db;
     });
   }, []);
