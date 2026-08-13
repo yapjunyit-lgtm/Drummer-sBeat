@@ -982,6 +982,9 @@ export default function StaveEditor() {
                 ctx.fillText("4", tx, staffLineY - 7);
                 ctx.fillText("4", tx, staffLineY + 15);
                 ctx.restore();
+                // Start this measure's notes after the time signature, so
+                // the first noteheads don't sit on top of the digits.
+                stave.setNoteStartX(x + 52);
               }
 
               // Measure number at each system start (top row only).
