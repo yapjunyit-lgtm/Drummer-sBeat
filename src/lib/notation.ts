@@ -73,8 +73,8 @@ export const VEX_DURATION: Record<DurationId, string> = {
    enough that the first measure's notes clear the 4/4 time signature
    without squeezing the note area or shrinking the input boxes. */
 const NOTE_FONT_SIZE = 13;
-/* Rest symbols (空拍 𝄽 / 半空拍 𝄾) render at half the normal note size. */
-const REST_FONT_SIZE = 8;
+/* Rest symbols (空拍 𝄽 / 半空拍 𝄾): 8pt was too small — 5× = 40pt. */
+const REST_FONT_SIZE = 40;
 /* Noteheads are drawn larger than the rest of the note (stems, rests stay
    compact) so the ● ✕ ▷ symbols read clearly. */
 const NOTEHEAD_FONT_SIZE = 16;
