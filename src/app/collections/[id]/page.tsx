@@ -56,6 +56,18 @@ export default function CollectionPage() {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const tocTimer = useRef<number | null>(null);
+
+  /* Keep the headings dropdown open for 2s after the mouse leaves, so it
+     can be reached even across the small gap to the list. */
+  const openToc = () => {
+    if (tocTimer.current) window.clearTimeout(tocTimer.current);
+    setTocOpen(true);
+  };
+  const scheduleTocClose = () => {
+    if (tocTimer.current) window.clearTimeout(tocTimer.current);
+    tocTimer.current = window.setTimeout(() => setTocOpen(false), 2000);
+  };
 
   /* Close the enlarged image preview with Escape. */
   useEffect(() => {
@@ -66,6 +78,12 @@ export default function CollectionPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox]);
+
+  useEffect(() => {
+    return () => {
+      if (tocTimer.current) window.clearTimeout(tocTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -346,8 +364,8 @@ export default function CollectionPage() {
             {/* Headings quick-access tab: opens on hover, closes on leave. */}
             <div
               className="relative"
-              onMouseEnter={() => setTocOpen(true)}
-              onMouseLeave={() => setTocOpen(false)}
+              onMouseEnter={openToc}
+              onMouseLeave={scheduleTocClose}
             >
               <button
                 type="button"
@@ -356,7 +374,7 @@ export default function CollectionPage() {
                 ☰ 目录 {headings.length > 0 ? `· ${headings.length}` : ""}
               </button>
               {tocOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1 w-64 max-h-72 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 shadow-2xl">
+                <div className="absolute right-0 top-full z-20 mt-0 w-64 max-h-72 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 pt-2 shadow-2xl">
                   {headings.length === 0 ? (
                     <p className="px-2 py-2 text-xs text-zinc-500">
                       No headings yet — add an H Heading block. 还没有标题，先添加“标题”块。
