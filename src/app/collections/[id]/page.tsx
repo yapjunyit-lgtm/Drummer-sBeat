@@ -54,6 +54,7 @@ export default function CollectionPage() {
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [tocOpen, setTocOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   /* Close the enlarged image preview with Escape. */
@@ -206,6 +207,17 @@ export default function CollectionPage() {
     (p) => !collection.pieceIds.includes(p.id)
   );
 
+  const headings = collection.notes.blocks.filter(
+    (b): b is Extract<CollectionBlock, { type: "heading" }> =>
+      b.type === "heading"
+  );
+
+  const scrollToHeading = (id: string) => {
+    document
+      .getElementById(`note-heading-${id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
       <Link
@@ -327,9 +339,44 @@ export default function CollectionPage() {
 
         {/* Notes */}
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-            Main Notes 主笔记
-          </h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
+              Main Notes 主笔记
+            </h2>
+            {/* Headings quick-access tab: opens on hover, closes on leave. */}
+            <div
+              className="relative"
+              onMouseEnter={() => setTocOpen(true)}
+              onMouseLeave={() => setTocOpen(false)}
+            >
+              <button
+                type="button"
+                className="rounded-lg border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
+              >
+                ☰ 目录 {headings.length > 0 ? `· ${headings.length}` : ""}
+              </button>
+              {tocOpen && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-64 max-h-72 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 shadow-2xl">
+                  {headings.length === 0 ? (
+                    <p className="px-2 py-2 text-xs text-zinc-500">
+                      No headings yet — add an H Heading block. 还没有标题，先添加“标题”块。
+                    </p>
+                  ) : (
+                    headings.map((h) => (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onClick={() => scrollToHeading(h.id)}
+                        className="block w-full truncate rounded-lg px-2.5 py-1.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-amber-300"
+                      >
+                        {h.text || "Untitled 无标题"}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
 
           <div className="mb-4 flex flex-wrap gap-1.5">
             <button
@@ -384,6 +431,11 @@ export default function CollectionPage() {
               collection.notes.blocks.map((block, i) => (
                 <div
                   key={block.id}
+                  id={
+                    block.type === "heading"
+                      ? `note-heading-${block.id}`
+                      : undefined
+                  }
                   className="group relative rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5"
                 >
                   {block.type === "heading" && (
