@@ -611,7 +611,10 @@ export default function StaveEditor() {
     y?: number;
     /** When editing an existing note, its id. */
     editId?: string;
+    kind?: "note" | "heading";
   } | null>(null);
+  const [scoreTocOpen, setScoreTocOpen] = useState(false);
+  const scoreTocTimer = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   /* "Play From" mode: after pressing the Play From button, the next note
      clicked on the score becomes the playback start point. */
@@ -1274,8 +1277,12 @@ export default function StaveEditor() {
               ) as unknown as SVGGElement;
               annGrp.setAttribute("data-ann-id", ann.id);
               annGrp.setAttribute("pointer-events", "auto");
-              ctx.setFont('italic 12px "Times New Roman", serif');
-              ctx.setFillStyle("#64748b");
+              ctx.setFont(
+                ann.kind === "heading"
+                  ? 'bold 15px "Times New Roman", serif'
+                  : 'italic 12px "Times New Roman", serif'
+              );
+              ctx.setFillStyle(ann.kind === "heading" ? "#111827" : "#64748b");
               ctx.fillText(text, x + 2, annY);
               ctx.closeGroup();
             }
@@ -1297,8 +1304,12 @@ export default function StaveEditor() {
           ) as unknown as SVGGElement;
           annGrp.setAttribute("data-ann-id", ann.id);
           annGrp.setAttribute("pointer-events", "auto");
-          ctx.setFont('italic 12px "Times New Roman", serif');
-          ctx.setFillStyle("#64748b");
+          ctx.setFont(
+            ann.kind === "heading"
+              ? 'bold 15px "Times New Roman", serif'
+              : 'italic 12px "Times New Roman", serif'
+          );
+          ctx.setFillStyle(ann.kind === "heading" ? "#111827" : "#64748b");
           ctx.fillText(ann.text, ann.x, ann.y);
           ctx.closeGroup();
         }
@@ -1406,6 +1417,7 @@ export default function StaveEditor() {
               x: a.x,
               y: a.y,
               editId: a.id,
+              kind: a.kind,
             });
           });
         }
@@ -1902,7 +1914,7 @@ export default function StaveEditor() {
     }
   };
 
-  const saveNote = (text: string) => {
+  const saveNote = (text: string, kind: "note" | "heading") => {
     if (!noteModal) return;
     updateProject((p) => {
       const list = p.annotations ?? [];
@@ -1910,7 +1922,7 @@ export default function StaveEditor() {
         return {
           ...p,
           annotations: list.map((a) =>
-            a.id === noteModal.editId ? { ...a, text } : a
+            a.id === noteModal.editId ? { ...a, text, kind } : a
           ),
         };
       }
@@ -1919,6 +1931,7 @@ export default function StaveEditor() {
         measure: noteModal.measure,
         part: noteModal.part,
         text,
+        kind,
       };
       if (
         noteModal.page !== undefined &&
@@ -2593,6 +2606,7 @@ export default function StaveEditor() {
           x: hit.x,
           y: hit.y,
           editId: hit.id,
+          kind: hit.kind,
         });
         return;
       }
@@ -2621,6 +2635,43 @@ export default function StaveEditor() {
     },
     [annotations, metrics, pageBounds, selected, viewMode]
   );
+
+  /* Score headings table of contents: hover to open, 2s grace to close,
+     click a heading to jump to its page and scroll it into view. */
+  const openScoreToc = () => {
+    if (scoreTocTimer.current) window.clearTimeout(scoreTocTimer.current);
+    setScoreTocOpen(true);
+  };
+  const scheduleScoreTocClose = () => {
+    if (scoreTocTimer.current) window.clearTimeout(scoreTocTimer.current);
+    scoreTocTimer.current = window.setTimeout(() => setScoreTocOpen(false), 2000);
+  };
+  const scrollToScoreHeading = (a: ScoreAnnotation) => {
+    setScoreTocOpen(false);
+    if (a.page === undefined || a.y === undefined) return;
+    setCurrentPage(Math.min(a.page, pageCount - 1));
+    window.requestAnimationFrame(() => {
+      const container = scoreScrollRef.current;
+      const pageEl = document.querySelectorAll<HTMLElement>(".score-page")[
+        Math.min(a.page!, pageCount - 1)
+      ];
+      if (!container || !pageEl) return;
+      const pr = pageEl.getBoundingClientRect();
+      const cr = container.getBoundingClientRect();
+      const target =
+        pr.top - cr.top + a.y! * effectiveScale - container.clientHeight / 2;
+      container.scrollTo({
+        top: container.scrollTop + target,
+        behavior: "smooth",
+      });
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scoreTocTimer.current) window.clearTimeout(scoreTocTimer.current);
+    };
+  }, []);
 
   /* ------------------------------------------------------------------ */
   /* Project management                                                  */
@@ -4204,6 +4255,45 @@ export default function StaveEditor() {
               above the score. */}
           <div className="sticky top-0 z-20 -mx-1 mb-2 flex justify-center">
             <div className="flex items-center gap-1 rounded-full border border-zinc-700/80 bg-zinc-900/90 px-2.5 py-1 text-xs text-zinc-300 shadow-lg">
+              {!viewMode && (
+                <div
+                  className="relative"
+                  onMouseEnter={openScoreToc}
+                  onMouseLeave={scheduleScoreTocClose}
+                >
+                  <button
+                    type="button"
+                    className="flex h-6 items-center gap-1 rounded-full px-2 text-zinc-300 transition-colors hover:text-amber-300"
+                    aria-label="Score headings 谱面标题目录"
+                  >
+                    ☰ 目录
+                  </button>
+                  {scoreTocOpen && (
+                    <div className="absolute left-0 top-full z-30 mt-0 w-64 max-h-72 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 pt-2 shadow-2xl">
+                      {annotations.filter((a) => a.kind === "heading").length ===
+                      0 ? (
+                        <p className="px-2 py-2 text-xs text-zinc-500">
+                          No headings yet — use ✎ Note and choose “H Heading”.
+                          还没有标题，用✎备注选择“标题”创建。
+                        </p>
+                      ) : (
+                        annotations
+                          .filter((a) => a.kind === "heading")
+                          .map((h) => (
+                            <button
+                              key={h.id}
+                              type="button"
+                              onClick={() => scrollToScoreHeading(h)}
+                              className="block w-full truncate rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-800 hover:text-amber-300"
+                            >
+                              {h.text || "Untitled 无标题"}
+                            </button>
+                          ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <button
                 onClick={() => setCurrentPage(Math.max(0, page - 1))}
                 disabled={page === 0}
@@ -4501,6 +4591,7 @@ export default function StaveEditor() {
         measureNumber={(noteModal?.measure ?? 0) + 1}
         partNumber={noteModal?.part ?? 0}
         pageNumber={noteModal?.page ?? null}
+        kind={noteModal?.kind}
         onSave={saveNote}
         onDelete={deleteNote}
         onClose={() => setNoteModal(null)}

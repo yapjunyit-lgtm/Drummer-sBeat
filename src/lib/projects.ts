@@ -48,6 +48,9 @@ export interface ScoreAnnotation {
   measure: number; // 0-based measure index
   text: string;
   part?: number; // which drummer row the note belongs to (default 0)
+  /** note = staff text comment; heading = section heading (listed in the
+      score's table of contents). Both are freely placeable. */
+  kind?: "note" | "heading";
   /** Free placement: page index + exact coordinates on the page. When
       present, the note is drawn at this position; otherwise it anchors to
       the measure row above. */
