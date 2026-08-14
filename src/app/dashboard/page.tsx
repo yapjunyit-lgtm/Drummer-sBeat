@@ -37,6 +37,9 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [collections, setCollections] = useState<ScoreCollection[]>([]);
   const [shared, setShared] = useState<CloudScore[]>([]);
+  const [dashTab, setDashTab] = useState<"scores" | "collections" | "groups">(
+    "scores"
+  );
   const [combineOpen, setCombineOpen] = useState(false);
   const [shareProject, setShareProject] = useState<Project | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -341,6 +344,31 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      {/* Ribbon categories, like the editor's tab bar. */}
+      <div className="mb-6 flex gap-1 border-b border-zinc-800">
+        {(
+          [
+            ["scores", "♪ Scores 乐谱"],
+            ["collections", "▤ Collections 项目集"],
+            ["groups", "≋ Groups 组合"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setDashTab(id)}
+            aria-pressed={dashTab === id}
+            className={[
+              "border-b-2 px-4 py-2 text-sm font-semibold transition-colors",
+              dashTab === id
+                ? "border-amber-500 text-amber-300"
+                : "border-transparent text-zinc-400 hover:text-zinc-100",
+            ].join(" ")}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {syncNote && (
         <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-300">
           {syncNote}
@@ -353,6 +381,8 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          {dashTab === "scores" && (
+          <>
           {/* Projects */}
           <section className="mb-10">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">
@@ -443,7 +473,11 @@ export default function DashboardPage() {
               </div>
             )}
           </section>
+          </>
+          )}
 
+          {dashTab === "collections" && (
+          <>
           {/* Collections */}
           <section className="mb-10">
             <div className="mb-3 flex items-center justify-between">
@@ -513,7 +547,11 @@ export default function DashboardPage() {
               </div>
             )}
           </section>
+          </>
+          )}
 
+          {dashTab === "scores" && (
+          <>
           {/* Shared with me */}
           {visibleShared.length > 0 && (
             <section className="mb-10">
@@ -577,7 +615,11 @@ export default function DashboardPage() {
               </div>
             </section>
           )}
+          </>
+          )}
 
+          {dashTab === "groups" && (
+          <>
           {/* Rhythm groups across all projects */}
           <section>
             <div className="mb-3 flex items-center justify-between">
@@ -651,6 +693,8 @@ export default function DashboardPage() {
               </div>
             )}
           </section>
+          </>
+          )}
         </>
       )}
       <CombineModal
