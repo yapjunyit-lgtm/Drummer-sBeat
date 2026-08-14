@@ -53,7 +53,18 @@ export default function CollectionPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  /* Close the enlarged image preview with Escape. */
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -433,12 +444,19 @@ export default function CollectionPage() {
                   {block.type === "image" && (
                     <div>
                       {block.src && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={block.src}
-                          alt={block.caption ?? "note image"}
-                          className="mb-1 max-h-64 w-full rounded-lg object-contain"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setLightbox(block.src)}
+                          className="block w-full cursor-zoom-in rounded-lg border-0 bg-transparent p-0"
+                          title="Enlarge 放大"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={block.src}
+                            alt={block.caption ?? "note image"}
+                            className="mb-1 max-h-64 w-full rounded-lg object-contain"
+                          />
+                        </button>
                       )}
                       <input
                         value={block.caption ?? ""}
@@ -494,6 +512,31 @@ export default function CollectionPage() {
           </div>
         </section>
       </div>
+
+      {/* Enlarged image preview */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-label="Enlarged image 图片放大预览"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Enlarged note image 放大的笔记图片"
+            className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightbox(null)}
+            aria-label="Close 关闭"
+            className="absolute right-5 top-5 rounded-full border border-zinc-600 bg-zinc-900/80 px-3 py-1.5 text-sm text-zinc-200 hover:border-zinc-400"
+          >
+            ✕ Close 关闭
+          </button>
+        </div>
+      )}
     </main>
   );
 }
