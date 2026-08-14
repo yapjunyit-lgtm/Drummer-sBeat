@@ -113,9 +113,11 @@ export default function GroupComposer({
           onClick={removeMeasure}
           disabled={measures.length <= 1}
           aria-label="Remove last measure 删除最后小节"
-          className="h-7 w-7 rounded-lg border border-zinc-700 text-zinc-300 transition-colors hover:border-zinc-500 disabled:opacity-40"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 transition-colors hover:border-zinc-500 disabled:opacity-40"
         >
-          −
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="h-3.5 w-3.5" aria-hidden="true">
+            <path d="M5 12h14" />
+          </svg>
         </button>
         <span className="w-8 text-center font-mono text-zinc-100">
           {measures.length}
@@ -123,9 +125,11 @@ export default function GroupComposer({
         <button
           onClick={addMeasure}
           aria-label="Add measure 增加小节"
-          className="h-7 w-7 rounded-lg border border-zinc-700 text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
         >
-          ＋
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="h-3.5 w-3.5" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
         </button>
         <div className="ml-auto">
           <GroupPreviewButton group={group} bpm={bpm} />

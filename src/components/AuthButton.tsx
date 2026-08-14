@@ -25,7 +25,10 @@ export default function AuthButton() {
         title="Running in local mode — connect Supabase for sharing 本地模式，配置 Supabase 后可分享"
         className="rounded-full border border-zinc-800 px-3 py-1.5 text-xs text-zinc-500"
       >
-        ☁ Local 本地
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+          <path d="M17.5 19a4.5 4.5 0 0 0 .9-8.9 6 6 0 0 0-11.6 1.6A3.8 3.8 0 0 0 6.5 19z" />
+        </svg>
+        Local 本地
       </span>
     );
   }
@@ -64,7 +67,20 @@ export default function AuthButton() {
           {initial}
         </span>
         <span className="max-w-28 truncate">{name}</span>
-        <span className="text-zinc-600">{open ? "▲" : "▼"}</span>
+        <span className="text-zinc-600" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-3 w-3"
+            style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 150ms" }}
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </span>
       </button>
       {open && (
         <div

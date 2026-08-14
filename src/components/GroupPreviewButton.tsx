@@ -45,7 +45,16 @@ export default function GroupPreviewButton({
         totalHits === 0 && "cursor-not-allowed opacity-40",
       ].join(" ")}
     >
-      {playing ? "■" : "▶"}
+      {playing ? (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+          <rect x="6" y="5.5" width="4" height="13" rx="1" />
+          <rect x="14" y="5.5" width="4" height="13" rx="1" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+          <path d="M7 5.5v13l11-6.5z" />
+        </svg>
+      )}
     </button>
   );
 }

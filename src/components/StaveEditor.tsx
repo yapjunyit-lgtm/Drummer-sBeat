@@ -433,7 +433,7 @@ function SlotCell({
           : "border-zinc-700/60 hover:bg-zinc-700/30",
         isOver && "bg-zinc-500/40",
         isCurrent && "ring-2 ring-cyan-300",
-        isNoteSelected && "!bg-lime-400/45 ring-2 ring-lime-300",
+        isNoteSelected && "!bg-amber-400/45 ring-2 ring-amber-300",
       ].join(" ")}
     />
   );
@@ -3319,10 +3319,10 @@ export default function StaveEditor() {
           <div className="flex flex-wrap items-center gap-1 border-b border-zinc-800 px-2">
             {(
               [
-                ["home", "🏠 Home 主页"],
-                ["notes", "♪ Notes 音符"],
-                ["ensemble", "🥁 Ensemble 鼓手"],
-                ["score", "📄 Score 乐谱"],
+                ["home", "Home 主页"],
+                ["notes", "Notes 音符"],
+                ["ensemble", "Ensemble 鼓手"],
+                ["score", "Score 乐谱"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -3336,6 +3336,36 @@ export default function StaveEditor() {
                     : "border-transparent text-zinc-400 hover:text-zinc-100",
                 ].join(" ")}
               >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom"
+                  aria-hidden="true"
+                >
+                  {id === "home" && (
+                    <path d="m3 10.5 9-7 9 7V20a1.5 1.5 0 0 1-1.5 1.5H15V15h-6v6.5H4.5A1.5 1.5 0 0 1 3 20z" />
+                  )}
+                  {id === "notes" && (
+                    <>
+                      <path d="M9 18V5l12-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="18" cy="16" r="3" />
+                    </>
+                  )}
+                  {id === "ensemble" && (
+                    <>
+                      <circle cx="12" cy="15" r="7" />
+                      <path d="M9 9 4.5 4.5M15 9l4.5-4.5" />
+                    </>
+                  )}
+                  {id === "score" && (
+                    <path d="M5 21h14M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M9 7h6M9 11h6M9 15h4" />
+                  )}
+                </svg>
                 {label}
               </button>
             ))}
@@ -3363,14 +3393,32 @@ export default function StaveEditor() {
                     : "border-zinc-700 text-zinc-300 hover:border-cyan-400 hover:text-cyan-300",
                 ].join(" ")}
               >
-                ▶ From 从..
+                <svg viewBox="0 0 24 24" fill="currentColor" className="mr-1 inline h-3 w-3 align-text-bottom" aria-hidden="true">
+                  <path d="M7 5.5v13l11-6.5z" />
+                </svg>
+                From 从..
               </button>
               <button
                 onClick={handlePlay}
                 className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-amber-400"
                 title="Play / pause 播放 / 暂停"
               >
-                {isPlaying ? "■ Stop 停止" : "▶ Play 播放"}
+                {isPlaying ? (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+                      <rect x="6" y="5.5" width="4" height="13" rx="1" />
+                      <rect x="14" y="5.5" width="4" height="13" rx="1" />
+                    </svg>
+                    Stop 停止
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+                      <path d="M7 5.5v13l11-6.5z" />
+                    </svg>
+                    Play 播放
+                  </>
+                )}
               </button>
               <label className="flex items-center gap-1.5 text-xs text-zinc-300">
                 <span className="font-semibold uppercase tracking-wider text-zinc-500">
@@ -3413,12 +3461,22 @@ export default function StaveEditor() {
               )}
               {syncStatus === "saving" && (
                 <span className="animate-pulse rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-300">
-                  ☁ Saving… 保存中
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1 inline h-3 w-3 align-text-bottom" aria-hidden="true">
+                    <path d="M17.5 19a4.5 4.5 0 0 0 .9-8.9 6 6 0 0 0-11.6 1.6A3.8 3.8 0 0 0 6.5 19z" />
+                    <path d="m9 15 3 3 3-3" />
+                    <path d="M12 18v-7" />
+                  </svg>
+                  Saving… 保存中
                 </span>
               )}
               {syncStatus === "synced" && (
                 <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-300">
-                  ☁ Synced 已同步
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1 inline h-3 w-3 align-text-bottom" aria-hidden="true">
+                    <path d="M17.5 19a4.5 4.5 0 0 0 .9-8.9 6 6 0 0 0-11.6 1.6A3.8 3.8 0 0 0 6.5 19z" />
+                    <path d="m9 15 3 3 3-3" />
+                    <path d="M12 18v-7" />
+                  </svg>
+                  Synced 已同步
                 </span>
               )}
               {syncStatus === "error" && (
@@ -3434,7 +3492,13 @@ export default function StaveEditor() {
                 title="Share & collaborate 分享协作"
                 className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
               >
-                🔗 Share 分享
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+                  <circle cx="18" cy="5" r="2.6" />
+                  <circle cx="6" cy="12" r="2.6" />
+                  <circle cx="18" cy="19" r="2.6" />
+                  <path d="m8.6 10.8 6.8-4.1M8.6 13.2l6.8 4.1" />
+                </svg>
+                Share 分享
               </button>
             </div>
           </div>
@@ -3486,7 +3550,23 @@ export default function StaveEditor() {
                   : "border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-300",
               ].join(" ")}
             >
-              {viewMode ? "✏️ Edit 编辑模式" : "👁 View 视图模式"}
+              {viewMode ? (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
+                    <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z" />
+                    <path d="m14 6 3 3" />
+                  </svg>
+                  Edit 编辑模式
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
+                    <path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" />
+                    <circle cx="12" cy="12" r="2.8" />
+                  </svg>
+                  View 视图模式
+                </>
+              )}
             </button>
             {!viewMode && (
               <button
@@ -3498,11 +3578,15 @@ export default function StaveEditor() {
                 className={[
                   "rounded-xl border px-4 py-2 text-sm font-semibold transition-colors",
                   selected === "select"
-                    ? "border-lime-400 bg-lime-400/15 text-lime-300 hover:bg-lime-400/25"
-                    : "border-zinc-700 text-zinc-300 hover:border-lime-400 hover:text-lime-300",
+                    ? "border-amber-400 bg-amber-400/15 text-amber-300 hover:bg-amber-400/25"
+                    : "border-zinc-700 text-zinc-300 hover:border-amber-400 hover:text-amber-300",
                 ].join(" ")}
               >
-                ☐ Select 选择
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
+                  <rect x="4" y="4" width="16" height="16" rx="3" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+                Select 选择
               </button>
             )}
             {selected === "select" && (
@@ -3597,7 +3681,9 @@ export default function StaveEditor() {
               aria-label="Add drummer 添加鼓手"
               className="rounded-lg border border-zinc-700 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
             >
-              ＋
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
             </button>
             <button
               onClick={() => {
@@ -3632,7 +3718,9 @@ export default function StaveEditor() {
               disabled={drummerCount <= 1}
               className="rounded-lg border border-zinc-700 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-red-800 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              −
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
+                <path d="M5 12h14" />
+              </svg>
             </button>
             </div>
           </ToolGroup>
@@ -3735,7 +3823,11 @@ export default function StaveEditor() {
                 disabled={selectedRows.size + selectedNotes.size === 0}
                 className="rounded-xl border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-300 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                ✦ Create Combo 创建组合
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
+                  <path d="m12 3 1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
+                  <path d="M19 15.5v4M17 17.5h4" opacity=".8" />
+                </svg>
+                Create Combo 创建组合
               </button>
             </ToolGroup>
           )}
@@ -3746,14 +3838,28 @@ export default function StaveEditor() {
               className="rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
               title="Combine with other projects 与其他项目合并"
             >
-              ✦ Combine 合并
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+                <path d="m12 3 1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
+                <path d="M19 15.5v4M17 17.5h4" opacity=".8" />
+              </svg>
+              Combine 合并
             </button>
             <button
               onClick={handleExportPdf}
               disabled={exporting}
               className="rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {exporting ? "Preparing… 准备中" : "⬇ Download PDF 下载PDF"}
+              {exporting ? (
+                "Preparing… 准备中"
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
+                    <path d="M12 3v12M7 10l5 5 5-5" />
+                    <path d="M4 19h16" />
+                  </svg>
+                  Download PDF 下载PDF
+                </>
+              )}
             </button>
           </ToolGroup>
           )}
@@ -3764,9 +3870,11 @@ export default function StaveEditor() {
                 <button
                   onClick={() => changeMeasureCount(measureCount - 1)}
                   aria-label="Decrease measures 减少小节"
-                  className="h-7 w-7 rounded-lg border border-zinc-700 transition-colors hover:border-zinc-500"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700 transition-colors hover:border-zinc-500"
                 >
-                  −
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="h-3.5 w-3.5" aria-hidden="true">
+                    <path d="M5 12h14" />
+                  </svg>
                 </button>
                 <span className="w-6 text-center font-mono text-zinc-100">
                   {measureCount}
@@ -3902,7 +4010,11 @@ export default function StaveEditor() {
               onClick={() => setViewMode(false)}
               className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
             >
-              ✏️ Edit 编辑模式
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+                <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z" />
+                <path d="m14 6 3 3" />
+              </svg>
+              Edit 编辑模式
             </button>
           </div>
         )}
@@ -4169,7 +4281,12 @@ export default function StaveEditor() {
                           <div className="min-w-0 flex-1">
                             <PaletteItem
                               id={`group:${g.id}`}
-                              symbol="▤"
+                              symbol={
+                                <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="mx-auto h-6 w-6" aria-hidden="true">
+                                  <path d="M4 18v-4M10 18v-8M16 18v-3M22 18v-6" />
+                                  <circle cx="4" cy="8" r="2.4" fill="currentColor" stroke="none" />
+                                </svg>
+                              }
                               label={g.name}
                               sub={`${g.measures.reduce(
                                 (a, m) => a + m.length,
@@ -4207,7 +4324,12 @@ export default function StaveEditor() {
                       <div className="min-w-0 flex-1">
                         <PaletteItem
                           id={`group:${g.id}`}
-                          symbol="▤"
+                          symbol={
+                            <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="mx-auto h-6 w-6" aria-hidden="true">
+                              <path d="M4 18v-4M10 18v-8M16 18v-3M22 18v-6" />
+                              <circle cx="4" cy="8" r="2.4" fill="currentColor" stroke="none" />
+                            </svg>
+                          }
                           label={g.name}
                           sub={`${p.name} · ${g.measures.reduce(
                             (a, m) => a + m.length,
@@ -4335,7 +4457,9 @@ export default function StaveEditor() {
                     aria-label="Zoom out 缩小"
                     className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-300 transition-colors hover:text-zinc-100"
                   >
-                    −
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" className="h-3 w-3" aria-hidden="true">
+                      <path d="M5 12h14" />
+                    </svg>
                   </button>
                   <button
                     onClick={() => setViewZoom(null)}
@@ -4436,7 +4560,7 @@ export default function StaveEditor() {
                           >
                             {selectedRows.has(`${row.measure}:${row.part}`) && (
                               <div
-                                className="selection-highlight pointer-events-none absolute rounded-md bg-lime-400/40 ring-2 ring-lime-300 shadow-[0_0_0_1px_rgba(0,0,0,0.4)]"
+                                className="selection-highlight pointer-events-none absolute rounded-md bg-amber-400/40 ring-2 ring-amber-300 shadow-[0_0_0_1px_rgba(0,0,0,0.4)]"
                                 style={{
                                   left: row.x,
                                   top: 0,
@@ -4508,7 +4632,7 @@ export default function StaveEditor() {
                             {playhead?.measure === row.measure &&
                               playhead.part === row.part && (
                               <div
-                                className="absolute bottom-[-12px] top-[-12px] w-0.5 bg-cyan-400 transition-transform duration-75"
+                                className="absolute bottom-[-12px] top-[-12px] w-0.5 bg-amber-400 transition-transform duration-75"
                                 style={{
                                   left: row.startX,
                                   transform: `translateX(${

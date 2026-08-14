@@ -200,7 +200,9 @@ export default function ShareModal({
               aria-label="Close 关闭"
               className="rounded-lg border border-zinc-700 px-2.5 py-1 text-sm text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-100"
             >
-              ✕
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
             </button>
           </div>
         </div>
@@ -248,7 +250,23 @@ export default function ShareModal({
                           : "text-zinc-500 hover:text-zinc-300",
                       ].join(" ")}
                     >
-                      {v === "private" ? "🔒 Private 私有" : "🌍 Public 公开"}
+                      {v === "private" ? (
+                        <>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+                            <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+                            <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+                          </svg>
+                          Private 私有
+                        </>
+                      ) : (
+                        <>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M3 12h18M12 3c2.7 2.6 4 5.6 4 9s-1.3 6.4-4 9c-2.7-2.6-4-5.6-4-9s1.3-6.4 4-9z" />
+                          </svg>
+                          Public 公开
+                        </>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -315,8 +333,8 @@ export default function ShareModal({
                             aria-label="Role 权限"
                             className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-200"
                           >
-                            <option value="editor">✏️ Edit 编辑</option>
-                            <option value="viewer">👁 View 查看</option>
+                            <option value="editor">Edit 编辑</option>
+                            <option value="viewer">View 查看</option>
                           </select>
                           <button
                             disabled={busy}
@@ -324,12 +342,30 @@ export default function ShareModal({
                             aria-label="Remove 移除"
                             className="shrink-0 rounded-lg border border-red-900 px-2 py-1 text-xs text-red-400 transition-colors hover:border-red-700"
                           >
-                            ✕
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="h-3.5 w-3.5" aria-hidden="true">
+                              <path d="M6 6l12 12M18 6 6 18" />
+                            </svg>
                           </button>
                         </>
                       ) : (
                         <span className="shrink-0 rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
-                          {c.role === "editor" ? "✏️ Edit 编辑" : "👁 View 查看"}
+                          {c.role === "editor" ? (
+                            <>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-0.5 inline h-3 w-3 align-text-bottom" aria-hidden="true">
+                                <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z" />
+                                <path d="m14 6 3 3" />
+                              </svg>
+                              Edit 编辑
+                            </>
+                          ) : (
+                            <>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" className="mr-0.5 inline h-3 w-3 align-text-bottom" aria-hidden="true">
+                                <path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" />
+                                <circle cx="12" cy="12" r="2.8" />
+                              </svg>
+                              View 查看
+                            </>
+                          )}
                         </span>
                       )}
                     </div>

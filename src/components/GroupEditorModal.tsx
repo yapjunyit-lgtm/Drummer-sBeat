@@ -60,7 +60,9 @@ export default function GroupEditorModal({
             aria-label="Close group editor 关闭组合编辑器"
             className="rounded-lg border border-zinc-700 px-2.5 py-1 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
           >
-            ✕
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
           </button>
         </div>
 
@@ -84,7 +86,10 @@ export default function GroupEditorModal({
             }}
             className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:border-amber-500 hover:text-amber-300"
           >
-            ＋ New 新建
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            New 新建
           </button>
           <button
             onClick={() => {

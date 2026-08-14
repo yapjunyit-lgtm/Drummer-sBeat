@@ -276,7 +276,10 @@ export default function CollectionPage() {
               onClick={() => setPickerOpen(true)}
               className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
             >
-              ＋ Add 添加
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Add 添加
             </button>
           </div>
 
@@ -305,24 +308,30 @@ export default function CollectionPage() {
                     onClick={() => movePiece(p.id, -1)}
                     disabled={i === 0}
                     aria-label="Move up 上移"
-                    className="h-6 w-6 rounded-md border border-zinc-700 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-40"
+                    className="flex h-6 w-6 items-center justify-center rounded-md border border-zinc-700 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-40"
                   >
-                    ↑
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                      <path d="m6 14.5 6-6 6 6" />
+                    </svg>
                   </button>
                   <button
                     onClick={() => movePiece(p.id, 1)}
                     disabled={i === pieces.length - 1}
                     aria-label="Move down 下移"
-                    className="h-6 w-6 rounded-md border border-zinc-700 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-40"
+                    className="flex h-6 w-6 items-center justify-center rounded-md border border-zinc-700 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-40"
                   >
-                    ↓
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                      <path d="m6 9.5 6 6 6-6" />
+                    </svg>
                   </button>
                   <button
                     onClick={() => removePiece(p.id)}
                     aria-label="Remove 移除"
-                    className="h-6 w-6 rounded-md border border-red-900 text-xs text-red-400 hover:border-red-700"
+                    className="flex h-6 w-6 items-center justify-center rounded-md border border-red-900 text-xs text-red-400 hover:border-red-700"
                   >
-                    ✕
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3 w-3" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6 6 18" />
+                    </svg>
                   </button>
                 </div>
               ))}
@@ -556,24 +565,30 @@ export default function CollectionPage() {
                       onClick={() => moveBlock(i, -1)}
                       disabled={i === 0}
                       aria-label="Move up 上移"
-                      className="h-5 w-5 text-[10px] text-zinc-300 hover:text-zinc-100 disabled:opacity-40"
+                      className="flex h-5 w-5 items-center justify-center text-[10px] text-zinc-300 hover:text-zinc-100 disabled:opacity-40"
                     >
-                      ↑
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true">
+                        <path d="m6 14.5 6-6 6 6" />
+                      </svg>
                     </button>
                     <button
                       onClick={() => moveBlock(i, 1)}
                       disabled={i === collection.notes.blocks.length - 1}
                       aria-label="Move down 下移"
-                      className="h-5 w-5 text-[10px] text-zinc-300 hover:text-zinc-100 disabled:opacity-40"
+                      className="flex h-5 w-5 items-center justify-center text-[10px] text-zinc-300 hover:text-zinc-100 disabled:opacity-40"
                     >
-                      ↓
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true">
+                        <path d="m6 9.5 6 6 6-6" />
+                      </svg>
                     </button>
                     <button
                       onClick={() => deleteBlock(block.id)}
                       aria-label="Delete 删除"
-                      className="h-5 w-5 text-[10px] text-red-400 hover:text-red-300"
+                      className="inline-flex h-5 w-5 items-center justify-center text-[10px] text-red-400 hover:text-red-300"
                     >
-                      ✕
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="h-3 w-3" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6 6 18" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -601,9 +616,12 @@ export default function CollectionPage() {
           <button
             onClick={() => setLightbox(null)}
             aria-label="Close 关闭"
-            className="absolute right-5 top-5 rounded-full border border-zinc-600 bg-zinc-900/80 px-3 py-1.5 text-sm text-zinc-200 hover:border-zinc-400"
+            className="absolute right-5 top-5 flex items-center gap-1.5 rounded-full border border-zinc-600 bg-zinc-900/80 px-3 py-1.5 text-sm text-zinc-200 hover:border-zinc-400"
           >
-            ✕ Close 关闭
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="h-3.5 w-3.5" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+            Close 关闭
           </button>
         </div>
       )}

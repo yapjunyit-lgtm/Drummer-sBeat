@@ -109,17 +109,21 @@ export default function CombineModal({
                       onClick={() => move(p.id, -1)}
                       disabled={i === 0}
                       aria-label="Move up 上移"
-                      className="h-6 w-6 rounded-md border border-zinc-700 text-xs text-zinc-300 transition-colors hover:border-zinc-500 disabled:opacity-40"
+                      className="flex h-6 w-6 items-center justify-center rounded-md border border-zinc-700 text-xs text-zinc-300 transition-colors hover:border-zinc-500 disabled:opacity-40"
                     >
-                      ↑
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                        <path d="m6 14.5 6-6 6 6" />
+                      </svg>
                     </button>
                     <button
                       onClick={() => move(p.id, 1)}
                       disabled={i === ordered.length - 1}
                       aria-label="Move down 下移"
-                      className="h-6 w-6 rounded-md border border-zinc-700 text-xs text-zinc-300 transition-colors hover:border-zinc-500 disabled:opacity-40"
+                      className="flex h-6 w-6 items-center justify-center rounded-md border border-zinc-700 text-xs text-zinc-300 transition-colors hover:border-zinc-500 disabled:opacity-40"
                     >
-                      ↓
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                        <path d="m6 9.5 6 6 6-6" />
+                      </svg>
                     </button>
                     <button
                       onClick={() => toggle(p.id)}
@@ -153,7 +157,16 @@ export default function CombineModal({
                     ].join(" ")}
                   >
                     <span className="text-amber-400">
-                      {checked ? "☑" : "☐"}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                        {checked ? (
+                          <>
+                            <rect x="4" y="4" width="16" height="16" rx="3" />
+                            <path d="m9 12 2 2 4-4" />
+                          </>
+                        ) : (
+                          <rect x="4" y="4" width="16" height="16" rx="3" />
+                        )}
+                      </svg>
                     </span>
                     <span className="min-w-0 flex-1 truncate">{p.name}</span>
                     <span className="shrink-0 text-xs text-zinc-500">
@@ -182,7 +195,11 @@ export default function CombineModal({
             disabled={ordered.length < 2 || !name.trim()}
             className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            ✦ Combine 合并
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
+              <path d="m12 3 1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
+              <path d="M19 15.5v4M17 17.5h4" opacity=".8" />
+            </svg>
+            Combine 合并
           </button>
         </div>
       </div>

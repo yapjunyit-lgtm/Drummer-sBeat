@@ -1,11 +1,20 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Drummer's Beat · "The Stage" design tokens (port of design/tokens.css)
+   Warm stage-ink neutrals replace zinc · stage gold replaces amber ·
+   shape lock: controls 10 · cards 16 · panels 20 · pills full.
+   ========================================================================== */
+
 :root {
-  --background: #09090b;
-  --foreground: #f4f4f5;
-  --surface: #101013;
-  --surface-2: #161619;
-  --accent: #f59e0b;
+  --background: #0e0c0a;
+  --foreground: #faf7f2;
+  --surface: #161310;
+  --surface-2: #1e1a15;
+  --accent: #f2a93b;
+  --on-accent: #1a130a;
+  --hairline: rgb(255 255 255 / 0.07);
+  --hairline-strong: rgb(255 255 255 / 0.14);
   color-scheme: dark;
 }
 
@@ -14,6 +23,48 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* --- "The Stage" palette remap -------------------------------------
+     Existing zinc-* utilities now resolve to warm stage ink (text steps
+     hold WCAG AA on the page; 700/800 keep border visibility). Amber
+     becomes stage gold. Status colors stay semantic. */
+  --color-zinc-50: #fffdf8;
+  --color-zinc-100: #faf7f2;
+  --color-zinc-200: #e8e2d8;
+  --color-zinc-300: #d6cfc3;
+  --color-zinc-400: #b8b0a4;
+  --color-zinc-500: #9a9084;
+  --color-zinc-600: #857c70;
+  --color-zinc-700: #2f2920;
+  --color-zinc-800: #23201a;
+  --color-zinc-900: #161310;
+  --color-zinc-950: #0e0c0a;
+
+  --color-amber-100: #fdf0da;
+  --color-amber-200: #fbe3b4;
+  --color-amber-300: #ffd58a;
+  --color-amber-400: #f9be5c;
+  --color-amber-500: #f2a93b;
+  --color-amber-600: #d98f26;
+  --color-amber-700: #b97a1e;
+
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+
+  --color-cyan-300: #67e8f9;
+  --color-cyan-400: #22d3ee;
+  --color-cyan-500: #06b6d4;
+
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+
+  /* --- shape lock: controls 10 · cards 16 · panels 20 ---------------- */
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
 }
 
 body {
@@ -25,7 +76,7 @@ body {
 
 /* Branded selection and keyboard focus. */
 ::selection {
-  background: rgb(245 158 11 / 0.3);
+  background: rgb(242 169 59 / 0.3);
 }
 
 :focus-visible {
@@ -45,14 +96,14 @@ button {
 /* Subtle branded scrollbars in the dark theme. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(63 63 70) transparent;
+  scrollbar-color: #3b3328 transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgb(63 63 70);
+  background: #3b3328;
   border-radius: 999px;
 }
 *::-webkit-scrollbar-track {
@@ -97,11 +148,11 @@ a {
   }
 }
 
-/* MuseScore-style PDF page: white sheet on a dark studio background */
+/* "The Stage" score page: warm paper sheet on the dark studio background. */
 .score-page {
-  background: #fff;
-  color: #111;
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.45);
+  background: #fffdf8;
+  color: #17140f;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25), 0 24px 64px -24px rgb(0 0 0 / 0.7);
   overflow: hidden;
 }

@@ -94,7 +94,10 @@ export default function NewGroupPage() {
           disabled={totalHits === 0}
           className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          ＋ Add to dashboard 添加到工作台
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Add to dashboard 添加到工作台
         </button>
       </div>
     </main>
