@@ -58,7 +58,7 @@ export default function CollectionPage() {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const tocTimer = useRef<number | null>(null);
 
-  /* Keep the headings dropdown open for 2s after the mouse leaves, so it
+  /* Keep the headings dropdown open for 1s after the mouse leaves, so it
      can be reached even across the small gap to the list. */
   const openToc = () => {
     if (tocTimer.current) window.clearTimeout(tocTimer.current);
@@ -66,7 +66,7 @@ export default function CollectionPage() {
   };
   const scheduleTocClose = () => {
     if (tocTimer.current) window.clearTimeout(tocTimer.current);
-    tocTimer.current = window.setTimeout(() => setTocOpen(false), 2000);
+    tocTimer.current = window.setTimeout(() => setTocOpen(false), 1000);
   };
 
   /* Close the enlarged image preview with Escape. */

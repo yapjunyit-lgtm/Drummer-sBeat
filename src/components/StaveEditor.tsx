@@ -2636,7 +2636,7 @@ export default function StaveEditor() {
     [annotations, metrics, pageBounds, selected, viewMode]
   );
 
-  /* Score headings table of contents: hover to open, 2s grace to close,
+  /* Score headings table of contents: hover to open, 1s grace to close,
      click a heading to jump to its page and scroll it into view. */
   const openScoreToc = () => {
     if (scoreTocTimer.current) window.clearTimeout(scoreTocTimer.current);
@@ -2644,7 +2644,10 @@ export default function StaveEditor() {
   };
   const scheduleScoreTocClose = () => {
     if (scoreTocTimer.current) window.clearTimeout(scoreTocTimer.current);
-    scoreTocTimer.current = window.setTimeout(() => setScoreTocOpen(false), 2000);
+    scoreTocTimer.current = window.setTimeout(
+      () => setScoreTocOpen(false),
+      1000
+    );
   };
   const scrollToScoreHeading = (a: ScoreAnnotation) => {
     setScoreTocOpen(false);
