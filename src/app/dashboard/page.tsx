@@ -9,6 +9,12 @@ import GroupPreviewButton from "@/components/GroupPreviewButton";
 import ShareModal from "@/components/ShareModal";
 import { useAuth } from "@/components/AuthProvider";
 import {
+  createCollection,
+  loadCollections,
+  saveCollections,
+  type ScoreCollection,
+} from "@/lib/collections";
+import {
   cloudAvailable,
   fetchVisibleScores,
   mergeCloudProjects,
@@ -29,6 +35,7 @@ export default function DashboardPage() {
   const { status: authStatus, user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [collections, setCollections] = useState<ScoreCollection[]>([]);
   const [shared, setShared] = useState<CloudScore[]>([]);
   const [combineOpen, setCombineOpen] = useState(false);
   const [shareProject, setShareProject] = useState<Project | null>(null);
@@ -67,6 +74,7 @@ export default function DashboardPage() {
     // Deferred one tick so the first render matches the server HTML.
     const timer = setTimeout(() => {
       setProjects(loadProjects());
+      setCollections(loadCollections());
       setMounted(true);
     }, 0);
     return () => clearTimeout(timer);
@@ -192,6 +200,23 @@ export default function DashboardPage() {
     setProjects(next);
     saveActiveProjectId(p.id);
     router.push("/editor");
+  };
+
+  const createNewCollection = () => {
+    const c = createCollection(
+      `New Collection ${collections.length + 1} 新项目集${collections.length + 1}`
+    );
+    const next = [...collections, c];
+    saveCollections(next);
+    setCollections(next);
+    router.push(`/collections/${c.id}`);
+  };
+
+  const deleteCollection = (id: string) => {
+    if (!window.confirm("Delete this collection? 确定删除该项目集吗？")) return;
+    const next = collections.filter((c) => c.id !== id);
+    saveCollections(next);
+    setCollections(next);
   };
 
   // All rhythm groups across all projects (favourites arrive later).
@@ -350,6 +375,66 @@ export default function DashboardPage() {
                         Open 打开 →
                       </div>
                     </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Collections */}
+          <section className="mb-10">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                Collections 项目集 · {collections.length}
+              </h2>
+              <button
+                onClick={createNewCollection}
+                className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
+              >
+                ＋ New Collection 新建项目集
+              </button>
+            </div>
+            {collections.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/40 p-10 text-center text-sm text-zinc-500">
+                <div className="mb-3 text-3xl text-zinc-600">▤</div>
+                Group multiple scores and add notes, pictures and comments.
+                Create your first collection. 将多首乐谱分组，并添加笔记、图片和评论。
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {collections.map((c) => (
+                  <div
+                    key={c.id}
+                    className="group rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors hover:border-amber-500/60"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <Link
+                        href={`/collections/${c.id}`}
+                        className="min-w-0"
+                      >
+                        <h3 className="truncate font-semibold text-zinc-100 group-hover:text-amber-300">
+                          {c.name}
+                        </h3>
+                      </Link>
+                      <button
+                        onClick={() => deleteCollection(c.id)}
+                        aria-label="Delete collection 删除项目集"
+                        className="shrink-0 rounded-lg border border-red-900 px-2 py-0.5 text-xs text-red-400 hover:border-red-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs text-zinc-500">
+                      {c.description || "No description 无描述"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
+                      <span className="rounded-full border border-zinc-700 px-2 py-0.5">
+                        {c.pieceIds.length} pieces 曲目
+                      </span>
+                      <span className="rounded-full border border-zinc-700 px-2 py-0.5">
+                        {c.notes.blocks.length} notes 笔记
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
