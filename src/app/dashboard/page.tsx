@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AuthButton from "@/components/AuthButton";
 import AuthGate from "@/components/AuthGate";
+import CollectionShareModal from "@/components/CollectionShareModal";
 import CombineModal from "@/components/CombineModal";
 import GroupPreviewButton from "@/components/GroupPreviewButton";
 import ShareModal from "@/components/ShareModal";
@@ -15,6 +16,10 @@ import {
   saveCollections,
   type ScoreCollection,
 } from "@/lib/collections";
+import {
+  fetchVisibleCollections,
+  mergeCloudCollections,
+} from "@/lib/collectionCloud";
 import {
   cloudAvailable,
   fetchVisibleScores,
@@ -43,6 +48,8 @@ export default function DashboardPage() {
   );
   const [combineOpen, setCombineOpen] = useState(false);
   const [shareProject, setShareProject] = useState<Project | null>(null);
+  const [shareCollection, setShareCollection] =
+    useState<ScoreCollection | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState<
@@ -63,6 +70,11 @@ export default function DashboardPage() {
     const merged = mergeCloudProjects(local, scores);
     saveProjects(merged);
     setProjects(merged);
+    const collLocal = loadCollections();
+    const { collections: cloudColl } = await fetchVisibleCollections();
+    const mergedColl = mergeCloudCollections(collLocal, cloudColl);
+    saveCollections(mergedColl);
+    setCollections(mergedColl);
     setShared(scores.filter((s) => s.ownerId !== user?.id));
   }, [user?.id]);
 
@@ -523,15 +535,29 @@ export default function DashboardPage() {
                           {c.name}
                         </h3>
                       </Link>
-                      <button
-                        onClick={() => deleteCollection(c.id)}
-                        aria-label="Delete collection 删除项目集"
-                        className="shrink-0 rounded-lg border border-red-900 px-2 py-0.5 text-xs text-red-400 hover:border-red-700"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="h-3 w-3" aria-hidden="true">
-                          <path d="M6 6l12 12M18 6 6 18" />
-                        </svg>
-                      </button>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {c.cloudRole === "editor" && (
+                          <span className="rounded-full border border-cyan-500/50 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
+                            Shared 共享
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setShareCollection(c)}
+                          title="Share collection 分享项目集"
+                          className="shrink-0 rounded-lg border border-zinc-700 px-2 py-0.5 text-xs text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
+                        >
+                          🔗
+                        </button>
+                        <button
+                          onClick={() => deleteCollection(c.id)}
+                          aria-label="Delete collection 删除项目集"
+                          className="shrink-0 rounded-lg border border-red-900 px-2 py-0.5 text-xs text-red-400 hover:border-red-700"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="h-3 w-3" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6 6 18" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     <p className="mt-1 line-clamp-2 text-xs text-zinc-500">
                       {c.description || "No description 无描述"}
@@ -729,6 +755,12 @@ export default function DashboardPage() {
           saveProjects(next);
           setProjects(next);
         }}
+      />
+      <CollectionShareModal
+        key={shareCollection?.id ?? "none"}
+        open={shareCollection !== null}
+        onClose={() => setShareCollection(null)}
+        collection={shareCollection}
       />
     </main>
     </AuthGate>

@@ -3,6 +3,21 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AuthGate from "@/components/AuthGate";
+import CollectionShareModal from "@/components/CollectionShareModal";
+import { useAuth } from "@/components/AuthProvider";
+import {
+  claimCollectionInvite,
+  fetchVisibleCollections,
+  grantPieceToAllCollaborators,
+  mergeCloudCollections,
+  pushCollectionToCloud,
+  subscribeCollectionChanges,
+} from "@/lib/collectionCloud";
+import {
+  cloudAvailable,
+  fetchVisibleScores,
+  mergeCloudProjects,
+} from "@/lib/cloud";
 import {
   useEffect,
   useRef,
@@ -13,13 +28,13 @@ import {
   loadCollections,
   newBlockId,
   saveCollections,
-  updateCollection,
   type CollectionBlock,
   type ScoreCollection,
 } from "@/lib/collections";
 import {
   loadProjects,
   saveActiveProjectId,
+  saveProjects,
   type Project,
 } from "@/lib/projects";
 
@@ -48,6 +63,7 @@ const BLOCK_STYLE: Record<CollectionBlock["type"], string> = {
 
 export default function CollectionPage() {
   const router = useRouter();
+  const { status: authStatus } = useAuth();
   const params = useParams<{ id: string }>();
   const [collections, setCollections] = useState<ScoreCollection[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -56,7 +72,15 @@ export default function CollectionPage() {
   const [draft, setDraft] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [ready, setReady] = useState(false);
+  const lastPushedRevision = useRef<Map<string, number>>(new Map());
+  const claimHandled = useRef(false);
+  const cloudPushTimer = useRef<number | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const collection =
+    collections.find((c) => c.id === params.id) ?? null;
   const tocTimer = useRef<number | null>(null);
 
   /* Keep the headings dropdown open for 1s after the mouse leaves, so it
@@ -90,11 +114,91 @@ export default function CollectionPage() {
     const t = setTimeout(() => {
       setCollections(loadCollections());
       setProjects(loadProjects());
+      setReady(true);
     }, 0);
     return () => clearTimeout(t);
   }, []);
 
-  const collection = collections.find((c) => c.id === params.id) ?? null;
+  /* Pull cloud collections + scores so shared collections and their pieces
+     are available locally. */
+  useEffect(() => {
+    if (!ready || authStatus !== "signed-in" || !cloudAvailable()) return;
+    let cancelled = false;
+    void (async () => {
+      const [collRes, scoreRes] = await Promise.all([
+        fetchVisibleCollections(),
+        fetchVisibleScores(),
+      ]);
+      if (cancelled) return;
+      const mergedColl = mergeCloudCollections(
+        loadCollections(),
+        collRes.collections
+      );
+      saveCollections(mergedColl);
+      setCollections(mergedColl);
+      const mergedProj = mergeCloudProjects(loadProjects(), scoreRes.scores);
+      saveProjects(mergedProj);
+      setProjects(mergedProj);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, authStatus]);
+
+  /* Share-link deep link: /collections/<id>?share=<token> */
+  useEffect(() => {
+    if (!ready || authStatus !== "signed-in" || claimHandled.current) return;
+    const share = new URLSearchParams(window.location.search).get("share");
+    if (!share) return;
+    claimHandled.current = true;
+    void (async () => {
+      const res = await claimCollectionInvite(share);
+      if (res.collection) {
+        const list = loadCollections();
+        if (!list.some((c) => c.id === res.collection!.id)) {
+          const next = [...list, res.collection!];
+          saveCollections(next);
+          setCollections(next);
+        }
+        const { scores } = await fetchVisibleScores();
+        const mergedProj = mergeCloudProjects(loadProjects(), scores);
+        saveProjects(mergedProj);
+        setProjects(mergedProj);
+        history.replaceState(null, "", `/collections/${res.collection!.id}`);
+      } else {
+        window.alert(res.error ?? "Failed to open collection 打开项目集失败");
+      }
+    })();
+  }, [ready, authStatus]);
+
+  /* Realtime: apply remote collection edits (ignore our own pushes). */
+  useEffect(() => {
+    if (!ready || !collection || authStatus !== "signed-in") return;
+    if (!cloudAvailable()) return;
+    const id = collection.id;
+    return subscribeCollectionChanges(id, (change) => {
+      if (change.revision === lastPushedRevision.current.get(id)) return;
+      const local = loadCollections();
+      const existing = local.find((c) => c.id === id);
+      if (!existing) return;
+      if (change.revision <= (existing.revision ?? 0)) return;
+      const raw = change.data as
+        | { pieceIds?: string[]; notes?: ScoreCollection["notes"] }
+        | undefined;
+      if (!raw) return;
+      const updated: ScoreCollection = {
+        ...existing,
+        pieceIds: raw.pieceIds ?? existing.pieceIds,
+        notes: raw.notes ?? existing.notes,
+        revision: change.revision,
+        updatedAt: Date.now(),
+      };
+      const next = loadCollections().map((c) => (c.id === id ? updated : c));
+      saveCollections(next);
+      setCollections(next);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, authStatus, collection?.id]);
 
   /* Debounced autosave. */
   const saveTimer = useRef<number | null>(null);
@@ -108,7 +212,22 @@ export default function CollectionPage() {
 
   const mutate = (fn: (c: ScoreCollection) => ScoreCollection) => {
     if (!collection) return;
-    commit(updateCollection(collections, collection.id, fn));
+    const edited = fn(collection);
+    const next = collections.map((c) =>
+      c.id === collection.id ? edited : c
+    );
+    commit(next);
+    if (cloudAvailable() && authStatus === "signed-in") {
+      if (cloudPushTimer.current) window.clearTimeout(cloudPushTimer.current);
+      cloudPushTimer.current = window.setTimeout(() => {
+        void (async () => {
+          const res = await pushCollectionToCloud(edited);
+          if (res.ok && res.revision !== undefined) {
+            lastPushedRevision.current.set(edited.id, res.revision);
+          }
+        })();
+      }, 700);
+    }
   };
 
   const pieces = collection
@@ -181,6 +300,13 @@ export default function CollectionPage() {
   const addPiece = (id: string) => {
     if (!collection.pieceIds.includes(id)) {
       mutate((c) => ({ ...c, pieceIds: [...c.pieceIds, id] }));
+      // Owner: grant current collaborators access to the new piece too.
+      if (cloudAvailable() && authStatus === "signed-in") {
+        void grantPieceToAllCollaborators({
+          ...collection,
+          pieceIds: [...collection.pieceIds, id],
+        });
+      }
     }
     setPickerOpen(false);
   };
@@ -250,23 +376,38 @@ export default function CollectionPage() {
       </Link>
 
       {/* Header */}
-      <div className="mt-3 mb-8">
-        <input
-          value={collection.name}
-          onChange={(e) => mutate((c) => ({ ...c, name: e.target.value }))}
-          aria-label="Collection name 项目集名称"
-          className="w-full bg-transparent text-2xl font-bold tracking-tight text-zinc-100 outline-none"
-        />
-        <textarea
-          value={collection.description}
-          onChange={(e) =>
-            mutate((c) => ({ ...c, description: e.target.value }))
-          }
-          rows={2}
-          aria-label="Collection description 描述"
-          placeholder="Describe this collection… 描述这个项目集…"
-          className="mt-1 w-full resize-y bg-transparent text-sm text-zinc-500 outline-none placeholder:text-zinc-700"
-        />
+      <div className="mt-3 mb-8 flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <input
+            value={collection.name}
+            onChange={(e) => mutate((c) => ({ ...c, name: e.target.value }))}
+            aria-label="Collection name 项目集名称"
+            className="w-full bg-transparent text-2xl font-bold tracking-tight text-zinc-100 outline-none"
+          />
+          <textarea
+            value={collection.description}
+            onChange={(e) =>
+              mutate((c) => ({ ...c, description: e.target.value }))
+            }
+            rows={2}
+            aria-label="Collection description 描述"
+            placeholder="Describe this collection… 描述这个项目集…"
+            className="mt-1 w-full resize-y bg-transparent text-sm text-zinc-500 outline-none placeholder:text-zinc-700"
+          />
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {collection.cloudRole === "editor" && (
+            <span className="rounded-full border border-cyan-500/50 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
+              Shared 共享
+            </span>
+          )}
+          <button
+            onClick={() => setShareOpen(true)}
+            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
+          >
+            🔗 Share 分享
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -629,6 +770,13 @@ export default function CollectionPage() {
           </button>
         </div>
       )}
+
+      <CollectionShareModal
+        key={`${String(shareOpen)}:${collection.id}`}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        collection={collection}
+      />
     </main>
     </AuthGate>
   );

@@ -17,6 +17,11 @@ export interface ScoreCollection {
   id: string;
   name: string;
   description: string;
+  /** Cloud owner id (set when fetched from Supabase). */
+  ownerId?: string;
+  /** Cloud revision + role metadata (set when fetched from Supabase). */
+  revision?: number;
+  cloudRole?: "owner" | "editor" | "viewer";
   /** Ordered references to existing Project ids. */
   pieceIds: string[];
   notes: { blocks: CollectionBlock[] };
