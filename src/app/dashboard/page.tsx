@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AuthButton from "@/components/AuthButton";
+import AuthGate from "@/components/AuthGate";
 import CombineModal from "@/components/CombineModal";
 import GroupPreviewButton from "@/components/GroupPreviewButton";
 import ShareModal from "@/components/ShareModal";
@@ -228,6 +229,7 @@ export default function DashboardPage() {
   );
 
   return (
+    <AuthGate>
     <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-900 pb-6">
         <div>
@@ -729,5 +731,6 @@ export default function DashboardPage() {
         }}
       />
     </main>
+    </AuthGate>
   );
 }

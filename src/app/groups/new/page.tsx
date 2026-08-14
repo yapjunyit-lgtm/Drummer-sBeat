@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import AuthGate from "@/components/AuthGate";
 import GroupComposer from "@/components/GroupComposer";
 import {
   createProject,
@@ -50,6 +51,7 @@ export default function NewGroupPage() {
   };
 
   return (
+    <AuthGate>
     <main
       id="main"
       className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 py-8"
@@ -101,5 +103,6 @@ export default function NewGroupPage() {
         </button>
       </div>
     </main>
+    </AuthGate>
   );
 }

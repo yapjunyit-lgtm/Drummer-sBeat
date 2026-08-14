@@ -12,6 +12,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { ensureProfile } from "@/lib/cloud";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { setCurrentUserId } from "@/lib/userScope";
 
 export type AuthStatus =
   | "loading" // deciding / restoring the session
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setSession(data.session);
       setUser(data.session?.user ?? null);
+      setCurrentUserId(data.session?.user?.id ?? null);
       setResolved(true);
       if (data.session) cleanUrlHash();
       if (data.session?.user) void ensureProfile(data.session.user);
@@ -80,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (_event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        setCurrentUserId(currentSession?.user?.id ?? null);
         setResolved(true);
         if (currentSession) cleanUrlHash();
         if (currentSession?.user) void ensureProfile(currentSession.user);
@@ -96,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase?.auth.signOut();
     setUser(null);
     setSession(null);
+    setCurrentUserId(null);
     setResolved(true);
   }, []);
 

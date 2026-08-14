@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import AuthGate from "@/components/AuthGate";
 import {
   useEffect,
   useRef,
@@ -118,6 +119,7 @@ export default function CollectionPage() {
 
   if (!collection) {
     return (
+      <AuthGate>
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
         <Link
           href="/dashboard"
@@ -129,6 +131,7 @@ export default function CollectionPage() {
           Collection not found 找不到该项目集
         </p>
       </main>
+      </AuthGate>
     );
   }
 
@@ -237,6 +240,7 @@ export default function CollectionPage() {
   };
 
   return (
+    <AuthGate>
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
       <Link
         href="/dashboard"
@@ -626,5 +630,6 @@ export default function CollectionPage() {
         </div>
       )}
     </main>
+    </AuthGate>
   );
 }

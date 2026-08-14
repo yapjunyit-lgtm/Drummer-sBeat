@@ -1,9 +1,11 @@
 import Link from "next/link";
+import AuthGate from "@/components/AuthGate";
 import AuthButton from "@/components/AuthButton";
 import StaveEditor from "@/components/StaveEditor";
 
 export default function EditorPage() {
   return (
+    <AuthGate>
     <main
       id="main"
       className="mx-auto flex h-dvh w-full max-w-[1700px] flex-col overflow-hidden"
@@ -21,5 +23,6 @@ export default function EditorPage() {
         <StaveEditor />
       </div>
     </main>
+    </AuthGate>
   );
 }

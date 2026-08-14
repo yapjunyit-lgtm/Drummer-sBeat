@@ -4,6 +4,8 @@
    notes document (text / images / comments). Stored in localStorage like the
    project list; pieces are references to Project ids (no duplication). */
 
+import { scopedKey } from "@/lib/userScope";
+
 export type CollectionBlock =
   | { id: string; type: "heading"; text: string }
   | { id: string; type: "text"; text: string }
@@ -23,6 +25,7 @@ export interface ScoreCollection {
 }
 
 const COLLECTIONS_KEY = "drummers-beat:collections:v1";
+const collectionsKey = () => scopedKey(COLLECTIONS_KEY);
 
 export function createCollection(name: string): ScoreCollection {
   return {
@@ -58,7 +61,7 @@ function isCollection(value: unknown): value is ScoreCollection {
 
 export function loadCollections(): ScoreCollection[] {
   try {
-    const raw = localStorage.getItem(COLLECTIONS_KEY);
+    const raw = localStorage.getItem(collectionsKey());
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -70,7 +73,7 @@ export function loadCollections(): ScoreCollection[] {
 
 export function saveCollections(list: ScoreCollection[]): void {
   try {
-    localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(list));
+    localStorage.setItem(collectionsKey(), JSON.stringify(list));
   } catch {
     // Storage unavailable — ignore for MVP.
   }

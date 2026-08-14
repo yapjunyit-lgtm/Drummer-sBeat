@@ -1,5 +1,7 @@
 /* Drummer's Beat · project store (localStorage until Supabase lands) */
 
+import { scopedKey } from "@/lib/userScope";
+
 export type ZoneId = "center" | "edge" | "rim";
 export type DurationId = "1" | "2" | "q" | "8" | "16" | "32" | "8t";
 
@@ -98,6 +100,10 @@ export interface Project {
 const PROJECTS_KEY = "drummers-beat:projects:v1";
 const ACTIVE_KEY = "drummers-beat:active-project:v1";
 const LEGACY_DRAFT_KEY = "drummers-beat:stave-draft:v1";
+
+const projectsKey = () => scopedKey(PROJECTS_KEY);
+const activeKey = () => scopedKey(ACTIVE_KEY);
+const draftKey = () => scopedKey(LEGACY_DRAFT_KEY);
 
 const MAX_MEASURES = 72;
 
@@ -280,7 +286,7 @@ function isProject(value: unknown): value is Project {
 
 export function loadProjects(): Project[] {
   try {
-    const raw = localStorage.getItem(PROJECTS_KEY);
+    const raw = localStorage.getItem(projectsKey());
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -292,7 +298,7 @@ export function loadProjects(): Project[] {
 
 export function saveProjects(projects: Project[]): void {
   try {
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    localStorage.setItem(projectsKey(), JSON.stringify(projects));
   } catch {
     // Storage unavailable — ignore for MVP.
   }
@@ -300,7 +306,7 @@ export function saveProjects(projects: Project[]): void {
 
 export function loadActiveProjectId(): string | null {
   try {
-    return localStorage.getItem(ACTIVE_KEY);
+    return localStorage.getItem(activeKey());
   } catch {
     return null;
   }
@@ -308,7 +314,7 @@ export function loadActiveProjectId(): string | null {
 
 export function saveActiveProjectId(id: string): void {
   try {
-    localStorage.setItem(ACTIVE_KEY, id);
+    localStorage.setItem(activeKey(), id);
   } catch {
     // Storage unavailable — ignore for MVP.
   }
@@ -317,7 +323,7 @@ export function saveActiveProjectId(id: string): void {
 /* Migrate the pre-project single-draft format into a default project. */
 export function migrateLegacyDraft(): Project | null {
   try {
-    const raw = localStorage.getItem(LEGACY_DRAFT_KEY);
+    const raw = localStorage.getItem(draftKey());
     if (!raw) return null;
     const draft = JSON.parse(raw) as {
       bpm?: number;
@@ -351,7 +357,7 @@ export function migrateLegacyDraft(): Project | null {
         slot: n.slot * 12,
         id: crypto.randomUUID(),
       }));
-    localStorage.removeItem(LEGACY_DRAFT_KEY);
+    localStorage.removeItem(draftKey());
     return project;
   } catch {
     return null;
