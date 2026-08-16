@@ -19,6 +19,7 @@ import {
 import {
   fetchVisibleCollections,
   mergeCloudCollections,
+  pushCollectionToCloud,
 } from "@/lib/collectionCloud";
 import {
   cloudAvailable,
@@ -225,6 +226,9 @@ export default function DashboardPage() {
     const next = [...collections, c];
     saveCollections(next);
     setCollections(next);
+    if (cloudAvailable() && authStatus === "signed-in") {
+      void pushCollectionToCloud(c);
+    }
     router.push(`/collections/${c.id}`);
   };
 

@@ -63,7 +63,7 @@ const BLOCK_STYLE: Record<CollectionBlock["type"], string> = {
 
 export default function CollectionPage() {
   const router = useRouter();
-  const { status: authStatus } = useAuth();
+  const { status: authStatus, user } = useAuth();
   const params = useParams<{ id: string }>();
   const [collections, setCollections] = useState<ScoreCollection[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -77,6 +77,7 @@ export default function CollectionPage() {
   const lastPushedRevision = useRef<Map<string, number>>(new Map());
   const claimHandled = useRef(false);
   const cloudPushTimer = useRef<number | null>(null);
+  const ensurePushed = useRef<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const collection =
@@ -136,6 +137,31 @@ export default function CollectionPage() {
       );
       saveCollections(mergedColl);
       setCollections(mergedColl);
+      // Ensure a local-only collection (never shared, no cloud row) exists
+      // in the cloud so it appears on other devices with the same account.
+      const active = mergedColl.find((c) => c.id === params.id);
+      if (
+        active &&
+        !active.ownerId &&
+        !active.cloudRole &&
+        !ensurePushed.current.has(active.id)
+      ) {
+        ensurePushed.current.add(active.id);
+        const res = await pushCollectionToCloud(active);
+        if (res.ok && res.revision !== undefined && user) {
+          const updated: ScoreCollection = {
+            ...active,
+            ownerId: user.id,
+            revision: res.revision,
+            cloudRole: "owner",
+          };
+          const list = loadCollections().map((c) =>
+            c.id === active.id ? updated : c
+          );
+          saveCollections(list);
+          setCollections(list);
+        }
+      }
       const mergedProj = mergeCloudProjects(loadProjects(), scoreRes.scores);
       saveProjects(mergedProj);
       setProjects(mergedProj);
@@ -143,7 +169,7 @@ export default function CollectionPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, authStatus]);
+  }, [ready, authStatus, user, params.id]);
 
   /* Share-link deep link: /collections/<id>?share=<token> */
   useEffect(() => {
