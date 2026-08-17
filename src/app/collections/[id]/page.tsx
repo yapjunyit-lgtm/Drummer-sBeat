@@ -7,6 +7,8 @@ import CollectionShareModal from "@/components/CollectionShareModal";
 import { useAuth } from "@/components/AuthProvider";
 import {
   claimCollectionInvite,
+  collectionHasContent,
+  dedupeEmptyCollections,
   fetchVisibleCollections,
   grantPieceToAllCollaborators,
   mergeCloudCollections,
@@ -135,13 +137,19 @@ export default function CollectionPage() {
         loadCollections(),
         collRes.collections
       );
-      saveCollections(mergedColl);
-      setCollections(mergedColl);
+      const dedupedColl = await dedupeEmptyCollections(
+        mergedColl,
+        collRes.collections,
+        user?.id
+      );
+      saveCollections(dedupedColl);
+      setCollections(dedupedColl);
       // Ensure a local-only collection (never shared, no cloud row) exists
       // in the cloud so it appears on other devices with the same account.
-      const active = mergedColl.find((c) => c.id === params.id);
+      const active = dedupedColl.find((c) => c.id === params.id);
       if (
         active &&
+        collectionHasContent(active) &&
         !active.ownerId &&
         !active.cloudRole &&
         !ensurePushed.current.has(active.id)

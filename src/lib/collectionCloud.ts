@@ -174,6 +174,76 @@ export function mergeCloudCollections(
   return [...byId.values()];
 }
 
+/* A collection counts as "has content" once it contains at least one piece
+   or one note block. Used to tell real collections apart from the empty
+   stubs older versions pushed to the cloud on creation. */
+export function collectionHasContent(c: ScoreCollection): boolean {
+  return c.pieceIds.length > 0 || (c.notes?.blocks?.length ?? 0) > 0;
+}
+
+/* Remove empty collection stubs that duplicate a same-named collection with
+   content. Empty stubs (auto-created by earlier versions that pushed a
+   collection to the cloud the moment it was created) clutter the dashboard
+   and look like collections whose details failed to sync. Owned stubs are
+   also deleted from the cloud so they don't reappear on other devices. */
+export async function dedupeEmptyCollections(
+  local: ScoreCollection[],
+  cloud: CloudCollection[],
+  userId?: string
+): Promise<ScoreCollection[]> {
+  const nameHasContent = new Map<string, boolean>();
+  const note = (name: string, has: boolean) => {
+    const key = name.trim().toLowerCase();
+    if (!key) return;
+    nameHasContent.set(key, (nameHasContent.get(key) ?? false) || has);
+  };
+  for (const c of local) note(c.name, collectionHasContent(c));
+  for (const cc of cloud) note(cc.collection.name, collectionHasContent(cc.collection));
+
+  const cloudIds = new Set(cloud.map((cc) => cc.collection.id));
+  const kept: ScoreCollection[] = [];
+  const deletableCloudIds: string[] = [];
+  const consider = (
+    c: ScoreCollection,
+    cloudRole: CollectionRole | undefined,
+    ownerId: string | undefined
+  ) => {
+    const key = c.name.trim().toLowerCase();
+    const hasContentTwin = !!key && !!nameHasContent.get(key) && !collectionHasContent(c);
+    if (hasContentTwin) {
+      if (
+        cloudIds.has(c.id) &&
+        (ownerId === userId || cloudRole === "owner")
+      ) {
+        deletableCloudIds.push(c.id);
+      }
+      return; // drop the empty duplicate
+    }
+    kept.push(c);
+  };
+
+  for (const c of local) {
+    consider(
+      c,
+      (c as unknown as { cloudRole?: CollectionRole }).cloudRole,
+      (c as unknown as { ownerId?: string }).ownerId
+    );
+  }
+  const keptIds = new Set(kept.map((c) => c.id));
+  for (const cc of cloud) {
+    if (!keptIds.has(cc.collection.id)) {
+      consider(cc.collection, cc.cloudRole, cc.ownerId);
+    }
+  }
+
+  if (deletableCloudIds.length > 0 && supabase) {
+    for (const id of deletableCloudIds) {
+      await supabase.from("collections").delete().eq("id", id);
+    }
+  }
+  return kept;
+}
+
 export function collectionCloudMeta(
   c: ScoreCollection
 ): { ownerId?: string; revision?: number; cloudRole?: CollectionRole } {
@@ -387,8 +457,14 @@ export async function syncCollectionsWithCloud(): Promise<void> {
   if (!supabase) return;
   const { collections } = await fetchVisibleCollections();
   if (collections.length === 0) return;
+  const { data: authData } = await supabase.auth.getUser();
   const merged = mergeCloudCollections(loadCollections(), collections);
-  saveCollections(merged);
+  const deduped = await dedupeEmptyCollections(
+    merged,
+    collections,
+    authData.user?.id
+  );
+  saveCollections(deduped);
 }
 
 /* Keep the local project list in sync when a collection references cloud

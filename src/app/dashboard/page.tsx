@@ -17,6 +17,7 @@ import {
   type ScoreCollection,
 } from "@/lib/collections";
 import {
+  dedupeEmptyCollections,
   fetchVisibleCollections,
   mergeCloudCollections,
   pushCollectionToCloud,
@@ -74,8 +75,13 @@ export default function DashboardPage() {
     const collLocal = loadCollections();
     const { collections: cloudColl } = await fetchVisibleCollections();
     const mergedColl = mergeCloudCollections(collLocal, cloudColl);
-    saveCollections(mergedColl);
-    setCollections(mergedColl);
+    const dedupedColl = await dedupeEmptyCollections(
+      mergedColl,
+      cloudColl,
+      user?.id
+    );
+    saveCollections(dedupedColl);
+    setCollections(dedupedColl);
     setShared(scores.filter((s) => s.ownerId !== user?.id));
   }, [user?.id]);
 
@@ -258,9 +264,9 @@ export default function DashboardPage() {
     const next = [...collections, c];
     saveCollections(next);
     setCollections(next);
-    if (cloudAvailable() && authStatus === "signed-in") {
-      void pushCollectionToCloud(c);
-    }
+    // Do NOT push an empty collection to the cloud yet — it would create an
+    // empty stub that shows up on other devices. The collection page pushes
+    // to the cloud once it has actual content (pieces or notes).
     router.push(`/collections/${c.id}`);
   };
 
@@ -269,6 +275,17 @@ export default function DashboardPage() {
     const next = collections.filter((c) => c.id !== id);
     saveCollections(next);
     setCollections(next);
+    const target = collections.find((c) => c.id === id);
+    if (
+      target &&
+      cloudAvailable() &&
+      authStatus === "signed-in" &&
+      supabase &&
+      (target.ownerId === user?.id ||
+        (target as unknown as { cloudRole?: string }).cloudRole === "owner")
+    ) {
+      void supabase.from("collections").delete().eq("id", id);
+    }
   };
 
   // All rhythm groups across all projects (favourites arrive later).
