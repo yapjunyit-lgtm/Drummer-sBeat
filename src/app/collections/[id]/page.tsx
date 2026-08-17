@@ -77,6 +77,7 @@ export default function CollectionPage() {
   const [tocOpen, setTocOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [cloudError, setCloudError] = useState<string | null>(null);
   const lastPushedRevision = useRef<Map<string, number>>(new Map());
   const claimHandled = useRef(false);
   const cloudPushTimer = useRef<number | null>(null);
@@ -169,6 +170,17 @@ export default function CollectionPage() {
           );
           saveCollections(list);
           setCollections(list);
+        } else if (!res.ok) {
+          console.error(
+            "[Drummer's Beat] initial collection push failed",
+            active.id,
+            res.error
+          );
+          setCloudError(
+            res.error
+              ? `Cloud save failed 云端保存失败: ${res.error}`
+              : "Cloud save failed 云端保存失败 — check your connection"
+          );
         }
       }
       const mergedProj = mergeCloudProjects(loadProjects(), scoreRes.scores);
@@ -294,6 +306,18 @@ export default function CollectionPage() {
           const res = await pushCollectionToCloud(edited);
           if (res.ok && res.revision !== undefined) {
             lastPushedRevision.current.set(edited.id, res.revision);
+            setCloudError(null);
+          } else {
+            console.error(
+              "[Drummer's Beat] collection cloud push failed",
+              edited.id,
+              res.error
+            );
+            setCloudError(
+              res.error
+                ? `Cloud save failed 云端保存失败: ${res.error}`
+                : "Cloud save failed 云端保存失败 — check your connection"
+            );
           }
         })();
       }, 700);
@@ -479,6 +503,15 @@ export default function CollectionPage() {
           </button>
         </div>
       </div>
+
+      {cloudError && (
+        <div
+          role="alert"
+          className="mb-5 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+        >
+          {cloudError}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Pieces */}
