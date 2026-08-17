@@ -84,6 +84,12 @@ export default function DashboardPage() {
     saveCollections(dedupedColl);
     setCollections(dedupedColl);
     setShared(scores.filter((s) => s.ownerId !== user?.id));
+    return {
+      scoreCount: scores.length,
+      collectionCount: dedupedColl.filter(
+        (c) => c.ownerId === user?.id || c.cloudRole === "owner"
+      ).length,
+    };
   }, [user?.id]);
 
   const flashUpdated = useCallback(() => {
@@ -231,11 +237,12 @@ export default function DashboardPage() {
     if (!user) return;
     setSyncing(true);
     setSyncNote(null);
-    let pushed = 0;
+    let pushedScores = 0;
+    let pushedCollections = 0;
     for (const p of loadProjects()) {
       if (p.ownerId && p.ownerId !== user.id) continue;
       const res = await pushProjectToCloud(p);
-      if (res.ok) pushed++;
+      if (res.ok) pushedScores++;
     }
     for (const c of loadCollections()) {
       if (c.ownerId && c.ownerId !== user.id) continue;
@@ -243,11 +250,13 @@ export default function DashboardPage() {
       // that actually have pieces or notes.
       if (!collectionHasContent(c)) continue;
       const res = await pushCollectionToCloud(c);
-      if (res.ok) pushed++;
+      if (res.ok) pushedCollections++;
     }
-    await refreshFromCloud();
+    const totals = await refreshFromCloud();
     setSyncing(false);
-    setSyncNote(`Synced ${pushed} projects 已同步 ${pushed} 个项目`);
+    setSyncNote(
+      `Pushed ${pushedScores} scores + ${pushedCollections} collections · Cloud: ${totals.scoreCount} scores + ${totals.collectionCount} collections 已同步 ${pushedScores} 个乐谱 + ${pushedCollections} 个项目集 · 云端共 ${totals.scoreCount} 个乐谱 + ${totals.collectionCount} 个项目集`
+    );
   };
 
   const createNewProject = () => {
