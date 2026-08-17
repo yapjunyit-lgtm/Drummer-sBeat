@@ -17,6 +17,7 @@ import {
   type ScoreCollection,
 } from "@/lib/collections";
 import {
+  collectionHasContent,
   dedupeEmptyCollections,
   fetchVisibleCollections,
   mergeCloudCollections,
@@ -238,6 +239,9 @@ export default function DashboardPage() {
     }
     for (const c of loadCollections()) {
       if (c.ownerId && c.ownerId !== user.id) continue;
+      // Never recreate empty stubs in the cloud — only push collections
+      // that actually have pieces or notes.
+      if (!collectionHasContent(c)) continue;
       const res = await pushCollectionToCloud(c);
       if (res.ok) pushed++;
     }

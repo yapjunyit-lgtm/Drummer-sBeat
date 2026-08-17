@@ -419,7 +419,13 @@ export async function claimCollectionInvite(
 
 export function subscribeCollectionChanges(
   collectionId: string,
-  onChange: (change: { revision: number; updatedAt: string; data?: unknown }) => void
+  onChange: (change: {
+    revision: number;
+    updatedAt: string;
+    name?: string;
+    description?: string;
+    data?: unknown;
+  }) => void
 ): () => void {
   if (!supabase) return () => {};
   const client = supabase;
@@ -437,11 +443,15 @@ export function subscribeCollectionChanges(
         const row = payload.new as {
           revision?: number;
           updated_at?: string;
+          name?: string;
+          description?: string;
           data?: unknown;
         };
         onChange({
           revision: row.revision ?? 0,
           updatedAt: row.updated_at ?? "",
+          name: row.name,
+          description: row.description,
           data: row.data,
         });
       }

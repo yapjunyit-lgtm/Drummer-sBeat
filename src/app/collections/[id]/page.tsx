@@ -20,6 +20,7 @@ import {
   fetchVisibleScores,
   mergeCloudProjects,
 } from "@/lib/cloud";
+import { supabase } from "@/lib/supabase";
 import {
   useEffect,
   useRef,
@@ -205,12 +206,19 @@ export default function CollectionPage() {
     })();
   }, [ready, authStatus]);
 
-  /* Realtime: apply remote collection edits (ignore our own pushes). */
+  /* Realtime + light poll: apply remote collection edits (ignore our own
+     pushes). Realtime is the fast path; the 6s revision poll is the
+     fallback for networks/plans where collection events don't arrive. */
   useEffect(() => {
     if (!ready || !collection || authStatus !== "signed-in") return;
     if (!cloudAvailable()) return;
     const id = collection.id;
-    return subscribeCollectionChanges(id, (change) => {
+    const applyRemoteChange = (change: {
+      revision: number;
+      name?: string;
+      description?: string;
+      data?: unknown;
+    }) => {
       if (change.revision === lastPushedRevision.current.get(id)) return;
       const local = loadCollections();
       const existing = local.find((c) => c.id === id);
@@ -222,6 +230,8 @@ export default function CollectionPage() {
       if (!raw) return;
       const updated: ScoreCollection = {
         ...existing,
+        name: change.name ?? existing.name,
+        description: change.description ?? existing.description,
         pieceIds: raw.pieceIds ?? existing.pieceIds,
         notes: raw.notes ?? existing.notes,
         revision: change.revision,
@@ -230,7 +240,33 @@ export default function CollectionPage() {
       const next = loadCollections().map((c) => (c.id === id ? updated : c));
       saveCollections(next);
       setCollections(next);
-    });
+    };
+    const stopRealtime = subscribeCollectionChanges(id, applyRemoteChange);
+    let lastSeenRevision = collection.revision ?? 0;
+    const interval = window.setInterval(() => {
+      if (!supabase) return;
+      void supabase
+        .from("collections")
+        .select("name, description, data, revision")
+        .eq("id", id)
+        .single()
+        .then(({ data, error }) => {
+          if (error || !data) return;
+          const revision = (data.revision as number) ?? 0;
+          if (revision <= lastSeenRevision) return;
+          lastSeenRevision = revision;
+          applyRemoteChange({
+            revision,
+            name: data.name as string | undefined,
+            description: data.description as string | undefined,
+            data: data.data as unknown,
+          });
+        });
+    }, 6000);
+    return () => {
+      window.clearInterval(interval);
+      stopRealtime();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, authStatus, collection?.id]);
 
