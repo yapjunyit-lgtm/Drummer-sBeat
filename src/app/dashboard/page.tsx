@@ -86,8 +86,11 @@ export default function DashboardPage() {
     setShared(scores.filter((s) => s.ownerId !== user?.id));
     return {
       scoreCount: scores.length,
-      collectionCount: dedupedColl.filter(
-        (c) => c.ownerId === user?.id || c.cloudRole === "owner"
+      // Count straight from the cloud fetch — the merged local list can hold
+      // a local copy whose ownership metadata is missing/stale, which would
+      // undercount. The fetch always carries correct owner/role metadata.
+      collectionCount: cloudColl.filter(
+        (cc) => cc.ownerId === user?.id || cc.cloudRole === "owner"
       ).length,
     };
   }, [user?.id]);
