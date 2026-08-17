@@ -100,15 +100,12 @@ export default function DashboardPage() {
   /* Pull cloud scores into the dashboard whenever the auth state settles. */
   useEffect(() => {
     if (!mounted || authStatus !== "signed-in" || !cloudAvailable()) return;
+    // Fetch scores AND collections so a fresh device sees everything owned
+    // by (or shared with) this account, not just local storage.
     void (async () => {
-      const { scores } = await fetchVisibleScores();
-      const local = loadProjects();
-      const merged = mergeCloudProjects(local, scores);
-      saveProjects(merged);
-      setProjects(merged);
-      setShared(scores.filter((s) => s.ownerId !== user?.id));
+      await refreshFromCloud();
     })();
-  }, [mounted, authStatus, user?.id]);
+  }, [mounted, authStatus, user?.id, refreshFromCloud]);
 
   /* Live dashboard: whenever any score we can see changes (someone edits it
      or shares it with us), refresh the list automatically. Uses a light
@@ -122,14 +119,18 @@ export default function DashboardPage() {
     let lastSig = "";
     const poll = async () => {
       try {
-        const { data, error } = await client
-          .from("scores")
-          .select("id, revision, updated_at");
+        const [scoreRes, collRes] = await Promise.all([
+          client.from("scores").select("id, revision, updated_at"),
+          client.from("collections").select("id, revision, updated_at"),
+        ]);
         if (cancelled) return;
-        if (error) throw error;
+        if (scoreRes.error) throw scoreRes.error;
+        if (collRes.error) throw collRes.error;
         failCount = 0;
         setLiveStatus("live");
-        const sig = (data ?? [])
+        const sig = (scoreRes.data ?? [])
+          .map((r) => `${r.id}:${r.revision}:${r.updated_at}`)
+          .join("|") + "||" + (collRes.data ?? [])
           .map((r) => `${r.id}:${r.revision}:${r.updated_at}`)
           .join("|");
         if (sig !== lastSig) {
@@ -182,6 +183,32 @@ export default function DashboardPage() {
           flashUpdated();
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collections" },
+        (payload) => {
+          console.info("[Drummer's Beat] dashboard: collection change", {
+            id: (payload.new as { id?: string } | null)?.id,
+            event: payload.eventType,
+          });
+          scheduleRefresh();
+          flashUpdated();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "collection_collaborators",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          console.info("[Drummer's Beat] dashboard: new collection collaborator");
+          scheduleRefresh();
+          flashUpdated();
+        }
+      )
       .subscribe();
     return () => {
       if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
@@ -201,6 +228,11 @@ export default function DashboardPage() {
     for (const p of loadProjects()) {
       if (p.ownerId && p.ownerId !== user.id) continue;
       const res = await pushProjectToCloud(p);
+      if (res.ok) pushed++;
+    }
+    for (const c of loadCollections()) {
+      if (c.ownerId && c.ownerId !== user.id) continue;
+      const res = await pushCollectionToCloud(c);
       if (res.ok) pushed++;
     }
     await refreshFromCloud();
