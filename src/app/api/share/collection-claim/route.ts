@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
   const { data: collection } = await serviceSupabase
     .from("collections")
-    .select("data")
+    .select("id, owner_id, name, description, data, revision, updated_at")
     .eq("id", collectionId)
     .maybeSingle();
   if (!collection) {
@@ -106,5 +106,24 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ data: collection.data });
+  /* Return the full collection document (id, name, description + the
+     pieceIds/notes payload) with ownership/revision metadata. The claim
+     client needs id/name to validate and render the collection; returning
+     only the bare jsonb (as before) made every valid link fail validation
+     with "Invalid share link 邀请链接无效". */
+  const data = (collection.data as { pieceIds?: string[]; notes?: unknown }) ??
+    {};
+  return NextResponse.json({
+    data: {
+      id: collection.id,
+      name: collection.name,
+      description: collection.description ?? "",
+      pieceIds: Array.isArray(data.pieceIds) ? data.pieceIds : [],
+      notes: data.notes ?? { blocks: [] },
+    },
+    ownerId: collection.owner_id,
+    revision: collection.revision ?? 0,
+    role: invite.role,
+    updatedAt: collection.updated_at,
+  });
 }

@@ -404,13 +404,53 @@ export async function claimCollectionInvite(
     body: JSON.stringify({ token }),
   });
   const json = (await res.json().catch(() => ({}))) as {
-    data?: unknown;
+    data?: {
+      id?: unknown;
+      name?: unknown;
+      description?: unknown;
+      pieceIds?: unknown;
+      notes?: unknown;
+    };
+    ownerId?: unknown;
+    revision?: unknown;
+    role?: unknown;
     error?: string;
   };
-  if (!res.ok || !json.data || !isCollectionLike(json.data)) {
+  if (!res.ok || !json.data) {
     return { error: json.error ?? "Invalid share link 邀请链接无效" };
   }
-  return { collection: json.data };
+  const id = typeof json.data.id === "string" ? json.data.id : "";
+  if (id === "") {
+    return { error: "Corrupted collection data 项目集数据损坏" };
+  }
+  /* The claim endpoint returns the full collection document plus cloud
+     metadata (ownerId / revision / role). Build a proper ScoreCollection so
+     the recipient's copy is validated, rendered, and later synced correctly
+     instead of being treated as a brand-new local-only collection. */
+  const collection: ScoreCollection = {
+    id,
+    name: typeof json.data.name === "string" ? json.data.name : "",
+    description:
+      typeof json.data.description === "string" ? json.data.description : "",
+    pieceIds: Array.isArray(json.data.pieceIds)
+      ? json.data.pieceIds.filter(
+          (x): x is string => typeof x === "string"
+        )
+      : [],
+    notes:
+      typeof json.data.notes === "object" && json.data.notes !== null
+        ? (json.data.notes as ScoreCollection["notes"])
+        : { blocks: [] },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    ownerId: typeof json.ownerId === "string" ? json.ownerId : undefined,
+    revision: typeof json.revision === "number" ? json.revision : undefined,
+    cloudRole: json.role === "viewer" ? "viewer" : "editor",
+  };
+  if (!isCollectionLike(collection)) {
+    return { error: "Corrupted collection data 项目集数据损坏" };
+  }
+  return { collection };
 }
 
 /* ------------------------------------------------------------------ */
