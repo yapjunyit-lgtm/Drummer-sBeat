@@ -1,7 +1,7 @@
 /*
  * Checks the metronome's beat math. Pure logic only — no audio, no browser.
  *
- * Usage: node scripts/verify-metronome.mts
+ * Usage: node --import ./scripts/alias-hook.mjs scripts/verify-metronome.mts
  */
 
 import {
@@ -103,6 +103,44 @@ check("500ms apart = 120", bpmFromTaps([0, 500, 1000, 1500]), 120);
 check("600ms apart = 100", bpmFromTaps([0, 600, 1200]), 100);
 check("jitter averages out", bpmFromTaps([0, 500, 1010, 1500]), 120);
 check("clamps absurd gaps", bpmFromTaps([0, 5000]), BPM_MIN);
+
+console.log("settings persistence");
+{
+  // Node has no localStorage, so stub it the way the other verify scripts do.
+  // A signed-out scope means scopedKey() returns the base key unchanged.
+  const store = new Map<string, string>();
+  (globalThis as unknown as { localStorage: unknown }).localStorage = {
+    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+    setItem: (k: string, v: string) => void store.set(k, String(v)),
+    removeItem: (k: string) => void store.delete(k),
+    clear: () => store.clear(),
+  };
+  const { loadMetronomeSettings, saveMetronomeSettings } = await import(
+    "../src/lib/metronomeSettings.ts"
+  );
+
+  check("empty storage falls back to defaults", loadMetronomeSettings(), base);
+
+  saveMetronomeSettings({ ...base, bpm: 88, subdivision: "triplet" });
+  check("round-trips what was saved", loadMetronomeSettings(), {
+    ...base,
+    bpm: 88,
+    subdivision: "triplet",
+  });
+
+  store.set(
+    "drummers-beat:metronome:v1",
+    JSON.stringify({ bpm: 9999, subdivision: "nonsense", volume: -50 })
+  );
+  check("repairs junk values", loadMetronomeSettings(), {
+    ...base,
+    bpm: BPM_MAX,
+    volume: 0,
+  });
+
+  store.set("drummers-beat:metronome:v1", "{not json");
+  check("survives corrupt json", loadMetronomeSettings(), base);
+}
 
 console.log(
   failures === 0
