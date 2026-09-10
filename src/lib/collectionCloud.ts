@@ -12,7 +12,6 @@ import {
 } from "@/lib/projects";
 import {
   hideCollection,
-  isOwnCollection,
   loadHiddenCollectionIds,
   loadCollections,
   saveCollections,
@@ -196,31 +195,79 @@ export function mergeCloudCollections(
 
 /* Remove a collection from this user's dashboard.
 
-   Collections you own are deleted for real (cloud row included). Collections
-   owned by someone else cannot be — Row Level Security refuses the delete, so
-   they are dismissed locally instead, otherwise they reappear on the next
-   refresh. `dismissed` tells the UI which of the two happened. */
+   Ownership is decided by the CLOUD row, never by local metadata: a device
+   that never fetched the collection (or an older local copy) has no ownerId /
+   revision, and trusting that used to make the delete a silent no-op — the
+   cloud row survived and the collection came back on the next refresh.
+
+   - Owned rows are deleted for real.
+   - Rows owned by someone else are "left": the collaborator row is removed so
+     Row Level Security hides the collection on every device, with a local
+     dismissal as an immediate fallback (the local store is per device).
+   `dismissed` tells the UI which of the two happened. */
 export async function removeCollectionForUser(
   collection: ScoreCollection,
   userId: string | undefined
 ): Promise<{ ok: boolean; dismissed: boolean; error?: string }> {
-  const localOnly =
-    collection.ownerId === undefined && collection.revision === undefined;
-  if (localOnly) return { ok: true, dismissed: false };
+  if (!supabase || !userId) return { ok: true, dismissed: false };
 
-  const owned = !!userId && isOwnCollection(collection, userId);
-  if (!owned) {
-    hideCollection(collection.id);
-    return { ok: true, dismissed: true };
-  }
-  if (!supabase) return { ok: true, dismissed: false };
+  /* Local-only collections can carry ids that never reached the cloud (legacy
+     data uses non-uuid ids); asking the database about those is a hard error,
+     and there is nothing there to clean up anyway. */
+  const isUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      collection.id
+    );
+  if (!isUuid) return { ok: true, dismissed: false };
 
-  const { error } = await supabase
+  const { data: row, error: readError } = await supabase
     .from("collections")
+    .select("owner_id")
+    .eq("id", collection.id)
+    .maybeSingle();
+  if (readError) {
+    return { ok: false, dismissed: false, error: readError.message };
+  }
+  /* Not visible to this user: nothing in the cloud to clean up. */
+  if (!row) return { ok: true, dismissed: false };
+
+  if (row.owner_id === userId) {
+    const { error } = await supabase
+      .from("collections")
+      .delete()
+      .eq("id", collection.id);
+    if (error) return { ok: false, dismissed: false, error: error.message };
+    return { ok: true, dismissed: false };
+  }
+
+  /* Someone else's collection: leaving the collaboration removes it on every
+     device, because the read policy keys off the collaborator row. */
+  hideCollection(collection.id);
+  const { data: leftRows, error } = await supabase
+    .from("collection_collaborators")
     .delete()
-    .eq("id", collection.id);
-  if (error) return { ok: false, dismissed: false, error: error.message };
-  return { ok: true, dismissed: false };
+    .eq("collection_id", collection.id)
+    .eq("user_id", userId)
+    .select("user_id");
+  if (error) {
+    return {
+      ok: false,
+      dismissed: true,
+      error: `removed here only, could not leave on the server: ${error.message}`,
+    };
+  }
+  /* Row Level Security only lets the collection owner remove collaborators, so
+     this delete can silently affect nothing. Report that honestly: the
+     collection would otherwise keep coming back on other devices. */
+  if (!leftRows || leftRows.length === 0) {
+    return {
+      ok: false,
+      dismissed: true,
+      error:
+        "removed on this device only — the server still lists you as a collaborator (see supabase/collection-leave-fix.sql)",
+    };
+  }
+  return { ok: true, dismissed: true };
 }
 
 /* A collection counts as "has content" once it contains at least one piece

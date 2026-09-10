@@ -91,6 +91,20 @@ async function rowExists(id: string) {
   return Array.isArray(rows) && rows.length === 1;
 }
 
+async function collaboratorExists(collectionId: string, userId: string) {
+  const rows = await j(
+    await realFetch(
+      SB_URL +
+        "/rest/v1/collection_collaborators?select=user_id&collection_id=eq." +
+        collectionId +
+        "&user_id=eq." +
+        userId,
+      { headers: { apikey: SERVICE, Authorization: "Bearer " + SERVICE } }
+    )
+  );
+  return Array.isArray(rows) && rows.length === 1;
+}
+
 try {
   const owner = await makeUser("owner");
   const editor = await makeUser("editor");
@@ -126,8 +140,25 @@ try {
 
   // editor removes it: not their row, so it can only be dismissed locally
   const editorRemoved = await cc.removeCollectionForUser(claimed.collection!, editor.id);
-  check("editor's removal is reported as a dismissal", editorRemoved.ok && editorRemoved.dismissed, JSON.stringify(editorRemoved));
+  check("editor's removal reports a dismissal", editorRemoved.dismissed, JSON.stringify(editorRemoved));
+  check(
+    "removal is honest when the server still has access",
+    editorRemoved.ok || /still lists you as a collaborator/.test(editorRemoved.error ?? ""),
+    JSON.stringify(editorRemoved)
+  );
   check("cloud row survives (not the editor's to delete)", await rowExists(collectionId), "row vanished from cloud");
+  check(
+    "editor LEFT the collaboration (so it hides on every device)",
+    !(await collaboratorExists(collectionId, editor.id)),
+    "collaborator row still present -> run supabase/collection-leave-fix.sql"
+  );
+
+  const { collections: editorCloudAfterLeave } = await cc.fetchVisibleCollections();
+  check(
+    "editor's cloud fetch no longer returns it",
+    !editorCloudAfterLeave.some((c) => c.collection.id === collectionId),
+    "still visible to the editor in the cloud"
+  );
 
   colStore.saveCollections(colStore.loadCollections().filter((c) => c.id !== collectionId));
   const { collections: editorCloud } = await cc.fetchVisibleCollections();
@@ -147,9 +178,46 @@ try {
   check("owner's removal is a real delete", ownerRemoved.ok && !ownerRemoved.dismissed, JSON.stringify(ownerRemoved));
   check("cloud row gone after the owner deletes it", !(await rowExists(collectionId)), "row still there");
 
+  /* The reported bug: a device holding a local copy WITHOUT owner/revision
+     metadata used to skip the cloud delete entirely, so the collection came
+     back on the next refresh. */
+  const staleId = crypto.randomUUID();
+  await realFetch(SB_URL + "/rest/v1/rpc/save_collection", {
+    method: "POST",
+    headers: { apikey: ANON, Authorization: "Bearer " + owner.token, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      p_id: staleId,
+      p_name: "Stale metadata " + stamp,
+      p_description: "",
+      p_data: { pieceIds: [], notes: { blocks: [] } },
+    }),
+  });
+  const staleRemoved = await cc.removeCollectionForUser(
+    {
+      id: staleId,
+      name: "Stale metadata",
+      description: "",
+      pieceIds: [],
+      notes: { blocks: [] },
+      createdAt: 0,
+      updatedAt: 0,
+    },
+    owner.id
+  );
+  check(
+    "delete works even when local metadata is missing",
+    staleRemoved.ok && !staleRemoved.dismissed,
+    JSON.stringify(staleRemoved)
+  );
+  check(
+    "that collection is really gone from the cloud (no reappearing)",
+    !(await rowExists(staleId)),
+    "row still there -> it would come back on refresh"
+  );
+
   const localOnly = await cc.removeCollectionForUser(
     {
-      id: "local-only-1",
+      id: crypto.randomUUID(),
       name: "Local only",
       description: "",
       pieceIds: [],
@@ -160,6 +228,24 @@ try {
     owner.id
   );
   check("local-only collection removal needs no cloud call", localOnly.ok && !localOnly.dismissed, JSON.stringify(localOnly));
+
+  const legacyId = await cc.removeCollectionForUser(
+    {
+      id: "legacy-non-uuid-id",
+      name: "Legacy local collection",
+      description: "",
+      pieceIds: [],
+      notes: { blocks: [] },
+      createdAt: 0,
+      updatedAt: 0,
+    },
+    owner.id
+  );
+  check(
+    "legacy non-uuid id does not error (local-only data)",
+    legacyId.ok && !legacyId.dismissed,
+    JSON.stringify(legacyId)
+  );
 
   // how the dashboard splits "my collections" from "shared with me"
   const base = {

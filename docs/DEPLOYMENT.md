@@ -38,6 +38,18 @@ Alternatives we evaluated and why we did not pick them:
    - the `save_score()` RPC (atomic save + revision bump)
    - Realtime publication for `scores` and `score_collaborators`
 
+3. Still in the SQL Editor, run the collection layer and its fixes:
+
+   - `supabase/collections.sql` — collections, collaborators, invites, RLS,
+     the `save_collection()` RPC and Realtime.
+   - `supabase/collection-leave-fix.sql` — lets a collaborator remove
+     themselves from a shared collection. Without it, "Remove from my list"
+     only affects the device you used, and the shared collection keeps coming
+     back on other devices (the RLS policies otherwise only allow the owner to
+     delete collaborator rows).
+   - `supabase/rls-recursion-fix.sql` and the `realtime-*.sql` files are
+     one-off patches; run them if you hit the problem they describe.
+
 ## 2. Configure Auth
 
 Project Settings → **Authentication**:
