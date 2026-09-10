@@ -31,6 +31,43 @@ export interface ScoreCollection {
 
 const COLLECTIONS_KEY = "drummers-beat:collections:v1";
 const collectionsKey = () => scopedKey(COLLECTIONS_KEY);
+const HIDDEN_KEY = "drummers-beat:hidden-collections:v1";
+const hiddenKey = () => scopedKey(HIDDEN_KEY);
+
+/* Collections the user removed from their dashboard.
+
+   A collection shared with you cannot be deleted from the cloud — you do not
+   own the row, so Row Level Security refuses the delete and the collection
+   reappears on the next refresh. Dismissing it locally is what makes "remove"
+   stick; opening the collection's page again clears the dismissal. */
+export function loadHiddenCollectionIds(): string[] {
+  try {
+    const raw = localStorage.getItem(hiddenKey());
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHiddenCollectionIds(ids: string[]): void {
+  try {
+    localStorage.setItem(hiddenKey(), JSON.stringify([...new Set(ids)]));
+  } catch {
+    // Storage unavailable — ignore.
+  }
+}
+
+export function hideCollection(id: string): void {
+  saveHiddenCollectionIds([...loadHiddenCollectionIds(), id]);
+}
+
+export function unhideCollection(id: string): void {
+  saveHiddenCollectionIds(loadHiddenCollectionIds().filter((x) => x !== id));
+}
 
 export function createCollection(name: string): ScoreCollection {
   return {

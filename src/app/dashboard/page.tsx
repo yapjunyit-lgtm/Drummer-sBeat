@@ -22,6 +22,7 @@ import {
   fetchVisibleCollections,
   mergeCloudCollections,
   pushCollectionToCloud,
+  removeCollectionForUser,
 } from "@/lib/collectionCloud";
 import {
   cloudAvailable,
@@ -287,21 +288,34 @@ export default function DashboardPage() {
   };
 
   const deleteCollection = (id: string) => {
-    if (!window.confirm("Delete this collection? 确定删除该项目集吗？")) return;
+    const target = collections.find((c) => c.id === id);
+    if (!target) return;
+    const owned =
+      target.ownerId === undefined ||
+      target.ownerId === user?.id ||
+      target.cloudRole === "owner";
+    const question = owned
+      ? "Delete this collection? 确定删除该项目集吗？"
+      : "This collection is shared with you by someone else, so it cannot be deleted from their account. Remove it from your list? 这是他人共享的项目集，将从你的列表移除；对方的项目集不会被删除。";
+    if (!window.confirm(question)) return;
+
     const next = collections.filter((c) => c.id !== id);
     saveCollections(next);
     setCollections(next);
-    const target = collections.find((c) => c.id === id);
-    if (
-      target &&
-      cloudAvailable() &&
-      authStatus === "signed-in" &&
-      supabase &&
-      (target.ownerId === user?.id ||
-        (target as unknown as { cloudRole?: string }).cloudRole === "owner")
-    ) {
-      void supabase.from("collections").delete().eq("id", id);
-    }
+
+    if (!cloudAvailable() || authStatus !== "signed-in") return;
+    void (async () => {
+      const res = await removeCollectionForUser(target, user?.id);
+      if (!res.ok) {
+        setSyncNote(
+          `Could not delete 删除失败: ${res.error ?? "unknown error"}`
+        );
+      } else if (res.dismissed) {
+        setSyncNote(
+          "Removed from your list 已从列表移除（他人共享的项目集仍属于对方）"
+        );
+      }
+    })();
   };
 
   // All rhythm groups across all projects (favourites arrive later).

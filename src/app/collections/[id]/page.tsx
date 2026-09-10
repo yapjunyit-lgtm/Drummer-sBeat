@@ -31,6 +31,7 @@ import {
   loadCollections,
   newBlockId,
   saveCollections,
+  unhideCollection,
   type CollectionBlock,
   type ScoreCollection,
 } from "@/lib/collections";
@@ -135,6 +136,9 @@ export default function CollectionPage() {
         fetchVisibleScores(),
       ]);
       if (cancelled) return;
+      /* Opening this collection clears any earlier "removed from my list", so
+         a dismissed (shared) collection always comes back when you visit it. */
+      unhideCollection(params.id);
       const mergedColl = mergeCloudCollections(
         loadCollections(),
         collRes.collections
@@ -201,6 +205,7 @@ export default function CollectionPage() {
     void (async () => {
       const res = await claimCollectionInvite(share);
       if (res.collection) {
+        unhideCollection(res.collection.id);
         const list = loadCollections();
         if (!list.some((c) => c.id === res.collection!.id)) {
           const next = [...list, res.collection!];

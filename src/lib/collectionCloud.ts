@@ -11,6 +11,8 @@ import {
   type Project,
 } from "@/lib/projects";
 import {
+  hideCollection,
+  loadHiddenCollectionIds,
   loadCollections,
   saveCollections,
   type ScoreCollection,
@@ -164,8 +166,15 @@ export function mergeCloudCollections(
   local: ScoreCollection[],
   cloud: CloudCollection[]
 ): ScoreCollection[] {
-  const byId = new Map(local.map((c) => [c.id, c]));
+  /* Collections the user removed from their dashboard stay removed — a shared
+     collection cannot be deleted from the cloud, so without this it would be
+     re-added on every refresh. Opening its page clears the mark. */
+  const hidden = new Set(loadHiddenCollectionIds());
+  const byId = new Map(
+    local.filter((c) => !hidden.has(c.id)).map((c) => [c.id, c])
+  );
   for (const cc of cloud) {
+    if (hidden.has(cc.collection.id)) continue;
     const existing = byId.get(cc.collection.id);
     if (
       !existing ||
@@ -182,6 +191,37 @@ export function mergeCloudCollections(
     }
   }
   return [...byId.values()];
+}
+
+/* Remove a collection from this user's dashboard.
+
+   Collections you own are deleted for real (cloud row included). Collections
+   owned by someone else cannot be — Row Level Security refuses the delete, so
+   they are dismissed locally instead, otherwise they reappear on the next
+   refresh. `dismissed` tells the UI which of the two happened. */
+export async function removeCollectionForUser(
+  collection: ScoreCollection,
+  userId: string | undefined
+): Promise<{ ok: boolean; dismissed: boolean; error?: string }> {
+  const localOnly =
+    collection.ownerId === undefined && collection.revision === undefined;
+  if (localOnly) return { ok: true, dismissed: false };
+
+  const owned =
+    !!userId &&
+    (collection.ownerId === userId || collection.cloudRole === "owner");
+  if (!owned) {
+    hideCollection(collection.id);
+    return { ok: true, dismissed: true };
+  }
+  if (!supabase) return { ok: true, dismissed: false };
+
+  const { error } = await supabase
+    .from("collections")
+    .delete()
+    .eq("id", collection.id);
+  if (error) return { ok: false, dismissed: false, error: error.message };
+  return { ok: true, dismissed: false };
 }
 
 /* A collection counts as "has content" once it contains at least one piece
