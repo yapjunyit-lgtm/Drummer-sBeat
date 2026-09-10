@@ -8,6 +8,7 @@ import AuthGate from "@/components/AuthGate";
 import CollectionShareModal from "@/components/CollectionShareModal";
 import CombineModal from "@/components/CombineModal";
 import GroupPreviewButton from "@/components/GroupPreviewButton";
+import MetronomeSession from "@/components/MetronomeSession";
 import ShareModal from "@/components/ShareModal";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -52,6 +53,7 @@ export default function DashboardPage() {
     "scores"
   );
   const [combineOpen, setCombineOpen] = useState(false);
+  const [metronomeOpen, setMetronomeOpen] = useState(false);
   const [shareProject, setShareProject] = useState<Project | null>(null);
   const [shareCollection, setShareCollection] =
     useState<ScoreCollection | null>(null);
@@ -437,6 +439,27 @@ export default function DashboardPage() {
               </button>
             </>
           )}
+          <button
+            onClick={() => setMetronomeOpen(true)}
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
+            title="Standalone practice metronome 独立节拍器"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M12 3 5 20h14L12 3Z" />
+              <path d="M12 3v9" />
+              <path d="m15.5 8.5-3.5 3.5" />
+            </svg>
+            Metronome 节拍器
+          </button>
           <button
             onClick={() => setCombineOpen(true)}
             className="flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
@@ -891,6 +914,9 @@ export default function DashboardPage() {
           </>
           )}
         </>
+      )}
+      {metronomeOpen && (
+        <MetronomeSession onClose={() => setMetronomeOpen(false)} />
       )}
       <CombineModal
         key={String(combineOpen)}
