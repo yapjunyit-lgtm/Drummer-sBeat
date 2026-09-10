@@ -1,6 +1,7 @@
 "use client";
 
 import * as Tone from "tone";
+import { masterBus, ZONE_BASE_DB } from "@/lib/audioLevels";
 import { SLOTS_PER_BEAT, type RhythmGroup } from "@/lib/projects";
 
 /* Shared one-shot audio engine for previewing rhythm groups (鼓心 / 鼓边 /
@@ -19,30 +20,30 @@ function ensureEngine() {
     pitchDecay: 0.05,
     octaves: 3,
     envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
-  }).toDestination();
-  center.volume.value = -4;
+  }).connect(masterBus());
+  center.volume.value = ZONE_BASE_DB.center;
 
   const edgeFilter = new Tone.Filter({
     type: "bandpass",
     frequency: 1800,
     Q: 1.2,
-  }).toDestination();
+  }).connect(masterBus());
   const edge = new Tone.NoiseSynth({
     noise: { type: "pink" },
     envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
   }).connect(edgeFilter);
-  edge.volume.value = -6;
+  edge.volume.value = ZONE_BASE_DB.edge;
 
   const rimFilter = new Tone.Filter({
     type: "highpass",
     frequency: 4500,
     Q: 0.8,
-  }).toDestination();
+  }).connect(masterBus());
   const rim = new Tone.NoiseSynth({
     noise: { type: "white" },
     envelope: { attack: 0.001, decay: 0.07, sustain: 0, release: 0.04 },
   }).connect(rimFilter);
-  rim.volume.value = -10;
+  rim.volume.value = ZONE_BASE_DB.rim;
 
   engine = { center, edge, rim };
   return engine;

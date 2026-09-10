@@ -29,6 +29,11 @@ import GroupPreviewButton from "@/components/GroupPreviewButton";
 import ScoreNoteModal from "@/components/ScoreNoteModal";
 import ShareModal from "@/components/ShareModal";
 import {
+  drummerVolumeDb,
+  masterBus,
+  ZONE_BASE_DB,
+} from "@/lib/audioLevels";
+import {
   claimShareInvite,
   cloudAvailable,
   parseCloudProject,
@@ -471,7 +476,7 @@ async function buildSampleZoneVoice(
       loop: false,
       playbackRate: opts?.playbackRate ?? 1,
     });
-    const out = new Tone.Volume(volume).toDestination();
+    const out = new Tone.Volume(volume).connect(masterBus());
     const fx: Tone.ToneAudioNode[] = [];
     if (opts?.lowpass) {
       fx.push(
@@ -506,8 +511,8 @@ function buildSynthCenterVoice(): EngineZoneVoice {
     pitchDecay: 0.05,
     octaves: 3,
     envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
-  }).toDestination();
-  synth.volume.value = -4;
+  }).connect(masterBus());
+  synth.volume.value = ZONE_BASE_DB.center;
   return {
     volume: synth.volume,
     triggerAttackRelease: (duration, time) =>
@@ -521,12 +526,12 @@ function buildSynthEdgeVoice(): EngineZoneVoice {
     type: "bandpass",
     frequency: 1800,
     Q: 1.2,
-  }).toDestination();
+  }).connect(masterBus());
   const noise = new Tone.NoiseSynth({
     noise: { type: "pink" },
     envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
   }).connect(filter);
-  noise.volume.value = -6;
+  noise.volume.value = ZONE_BASE_DB.edge;
   return {
     volume: noise.volume,
     triggerAttackRelease: (duration, time) =>
@@ -1465,9 +1470,6 @@ export default function StaveEditor() {
   /* Audio engine                                                        */
   /* ------------------------------------------------------------------ */
 
-  const drummerVolumeDb = (volume: number | undefined) =>
-    ((volume ?? 60) / 100) * 24 - 24; // 60 → -9.6 dB, 100 → 0 dB, 0 → -24 dB
-
   const ensureEngine = useCallback(async (count: number) => {
     await Tone.start();
     const base = engineRef.current ?? { drummers: [] };
@@ -1476,20 +1478,20 @@ export default function StaveEditor() {
       // 鼓心 + 鼓边 use the approved Real Kit samples (bassier 鼓心,
       // brighter 鼓边); fall back to synthesis if a sample fails to load.
       const center =
-        (await buildSampleZoneVoice("/samples/gu-xin.wav", -5, {
+        (await buildSampleZoneVoice("/samples/gu-xin.wav", ZONE_BASE_DB.center, {
           // Approved: more solid — mid body through, tighter pitch.
           playbackRate: 0.9,
           lowpass: 800,
         })) ?? buildSynthCenterVoice();
       const edge =
-        (await buildSampleZoneVoice("/samples/gu-bian.wav", -3, {
+        (await buildSampleZoneVoice("/samples/gu-bian.wav", ZONE_BASE_DB.edge, {
           playbackRate: 1.12,
           highpass: 2100,
         })) ?? buildSynthEdgeVoice();
 
       // 鼓棒 (Dik): dry two-stick click — a very short white-noise burst
       // through a highpass plus a 2.4kHz wood tick (selected in Sound Lab).
-      const rimOut = new Tone.Volume(-11).toDestination();
+      const rimOut = new Tone.Volume(ZONE_BASE_DB.rim).connect(masterBus());
       const rimNoise = new Tone.NoiseSynth({
         noise: { type: "white" },
         envelope: { attack: 0.001, decay: 0.022, sustain: 0, release: 0.015 },
@@ -1535,9 +1537,9 @@ export default function StaveEditor() {
     if (!engine) return;
     engine.drummers.forEach((d, i) => {
       const db = drummerVolumeDb(volumes[i]);
-      d.center.volume.value = -4 + db;
-      d.edge.volume.value = -2 + db;
-      d.rim.volume.value = -10 + db;
+      d.center.volume.value = ZONE_BASE_DB.center + db;
+      d.edge.volume.value = ZONE_BASE_DB.edge + db;
+      d.rim.volume.value = ZONE_BASE_DB.rim + db;
     });
   }, []);
 
