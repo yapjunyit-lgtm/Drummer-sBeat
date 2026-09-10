@@ -37,6 +37,11 @@ export interface CloudCollection {
   cloudRole: CollectionRole;
 }
 
+/* Validates a FULL collection record (id/name plus the payload).
+   Careful: `collections.data` in the cloud holds only `{ pieceIds, notes }`,
+   so never feed that raw jsonb to this helper — build the record from the row
+   columns first. Passing the bare payload made every cloud collection and
+   every claimed share link look invalid. */
 function isCollectionLike(value: unknown): value is ScoreCollection {
   if (typeof value !== "object" || value === null) return false;
   const c = value as Record<string, unknown>;
@@ -117,8 +122,7 @@ export async function fetchVisibleCollections(): Promise<{
 
   const result: CloudCollection[] = [];
   for (const row of rows) {
-    const raw = row.data as unknown;
-    if (!isCollectionLike(raw)) continue;
+    const raw = (row.data ?? {}) as { pieceIds?: unknown; notes?: unknown };
     const role: CollectionRole =
       row.owner_id === userId
         ? "owner"
@@ -129,14 +133,20 @@ export async function fetchVisibleCollections(): Promise<{
       id: row.id as string,
       name: row.name as string,
       description: (row.description as string) ?? "",
-      pieceIds: raw.pieceIds,
-      notes: raw.notes,
+      pieceIds: Array.isArray(raw.pieceIds)
+        ? raw.pieceIds.filter((x): x is string => typeof x === "string")
+        : [],
+      notes:
+        typeof raw.notes === "object" && raw.notes !== null
+          ? (raw.notes as ScoreCollection["notes"])
+          : { blocks: [] },
       ownerId: row.owner_id as string,
       revision: (row.revision as number) ?? 0,
       cloudRole: role,
       createdAt: Date.now(),
       updatedAt: new Date(row.updated_at as string).getTime(),
     };
+    if (!isCollectionLike(collection)) continue;
     result.push({
       collection,
       ownerId: row.owner_id as string,
@@ -181,11 +191,37 @@ export function collectionHasContent(c: ScoreCollection): boolean {
   return c.pieceIds.length > 0 || (c.notes?.blocks?.length ?? 0) > 0;
 }
 
+/* Collection ids that a collaborator row or a share invite points at. These
+   must survive the empty-stub cleanup: deleting a row that a share link
+   references is exactly how "Collection not found 项目集不存在" happens for the
+   person you sent the link to. */
+async function referencedCollectionIds(ids: string[]): Promise<Set<string>> {
+  const referenced = new Set<string>();
+  if (!supabase || ids.length === 0) return referenced;
+  const [{ data: invites }, { data: collaborators }] = await Promise.all([
+    supabase.from("collection_invites").select("collection_id").in("collection_id", ids),
+    supabase
+      .from("collection_collaborators")
+      .select("collection_id")
+      .in("collection_id", ids),
+  ]);
+  for (const row of invites ?? []) referenced.add(row.collection_id as string);
+  for (const row of collaborators ?? [])
+    referenced.add(row.collection_id as string);
+  return referenced;
+}
+
 /* Remove empty collection stubs that duplicate a same-named collection with
    content. Empty stubs (auto-created by earlier versions that pushed a
    collection to the cloud the moment it was created) clutter the dashboard
-   and look like collections whose details failed to sync. Owned stubs are
-   also deleted from the cloud so they don't reappear on other devices. */
+   and look like collections whose details failed to sync.
+
+   Only collections the current user actually owns are considered, and never
+   ones that already have a collaborator or a share invite — a collection you
+   shared may legitimately still be empty (you just created it, or it only
+   holds a description), and removing it from your own dashboard or from the
+   cloud would break the link you sent. Owned, unreferenced stubs are deleted
+   from the cloud so they don't reappear on other devices. */
 export async function dedupeEmptyCollections(
   local: ScoreCollection[],
   cloud: CloudCollection[],
@@ -201,6 +237,23 @@ export async function dedupeEmptyCollections(
   for (const cc of cloud) note(cc.collection.name, collectionHasContent(cc.collection));
 
   const cloudIds = new Set(cloud.map((cc) => cc.collection.id));
+  const isOwned = (
+    cloudRole: CollectionRole | undefined,
+    ownerId: string | undefined
+  ) => ownerId === userId || cloudRole === "owner";
+  const ownedIds = new Set<string>();
+  for (const c of local) {
+    const meta = c as unknown as {
+      ownerId?: string;
+      cloudRole?: CollectionRole;
+    };
+    if (isOwned(meta.cloudRole, meta.ownerId)) ownedIds.add(c.id);
+  }
+  for (const cc of cloud) {
+    if (isOwned(cc.cloudRole, cc.ownerId)) ownedIds.add(cc.collection.id);
+  }
+  const referenced = await referencedCollectionIds([...ownedIds]);
+
   const kept: ScoreCollection[] = [];
   const deletableCloudIds: string[] = [];
   const consider = (
@@ -210,13 +263,8 @@ export async function dedupeEmptyCollections(
   ) => {
     const key = c.name.trim().toLowerCase();
     const hasContentTwin = !!key && !!nameHasContent.get(key) && !collectionHasContent(c);
-    if (hasContentTwin) {
-      if (
-        cloudIds.has(c.id) &&
-        (ownerId === userId || cloudRole === "owner")
-      ) {
-        deletableCloudIds.push(c.id);
-      }
+    if (hasContentTwin && isOwned(cloudRole, ownerId) && !referenced.has(c.id)) {
+      if (cloudIds.has(c.id)) deletableCloudIds.push(c.id);
       return; // drop the empty duplicate
     }
     kept.push(c);
