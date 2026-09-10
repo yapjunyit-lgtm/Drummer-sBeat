@@ -12,6 +12,7 @@ import {
 } from "@/lib/projects";
 import {
   hideCollection,
+  isOwnCollection,
   loadHiddenCollectionIds,
   loadCollections,
   saveCollections,
@@ -207,9 +208,7 @@ export async function removeCollectionForUser(
     collection.ownerId === undefined && collection.revision === undefined;
   if (localOnly) return { ok: true, dismissed: false };
 
-  const owned =
-    !!userId &&
-    (collection.ownerId === userId || collection.cloudRole === "owner");
+  const owned = !!userId && isOwnCollection(collection, userId);
   if (!owned) {
     hideCollection(collection.id);
     return { ok: true, dismissed: true };

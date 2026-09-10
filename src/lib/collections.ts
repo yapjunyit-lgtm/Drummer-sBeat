@@ -81,6 +81,18 @@ export function createCollection(name: string): ScoreCollection {
   };
 }
 
+/* Which collections belong to the signed-in user. Local-only collections
+   (no cloud metadata yet) count as yours; anything carrying another player's
+   owner id does not, even if you can open it. */
+export function isOwnCollection(
+  c: ScoreCollection,
+  userId: string | undefined
+): boolean {
+  return (
+    c.ownerId === undefined || c.ownerId === userId || c.cloudRole === "owner"
+  );
+}
+
 function isBlock(value: unknown): value is CollectionBlock {
   if (typeof value !== "object" || value === null) return false;
   const b = value as Record<string, unknown>;

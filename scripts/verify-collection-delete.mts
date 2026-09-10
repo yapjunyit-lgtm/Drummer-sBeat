@@ -160,6 +160,21 @@ try {
     owner.id
   );
   check("local-only collection removal needs no cloud call", localOnly.ok && !localOnly.dismissed, JSON.stringify(localOnly));
+
+  // how the dashboard splits "my collections" from "shared with me"
+  const base = {
+    id: "",
+    name: "c",
+    description: "",
+    pieceIds: [] as string[],
+    notes: { blocks: [] as { id: string; type: "text"; text: string }[] },
+    createdAt: 0,
+    updatedAt: 0,
+  };
+  check("own list: local-only collection counts as mine", colStore.isOwnCollection({ ...base, id: "a" }, "me"));
+  check("own list: collection I own in the cloud counts as mine", colStore.isOwnCollection({ ...base, id: "b", ownerId: "me" }, "me"));
+  check("own list: another player's collection is excluded", !colStore.isOwnCollection({ ...base, id: "c", ownerId: "them", cloudRole: "editor" }, "me"));
+  check("own list: owner role wins over owner id", colStore.isOwnCollection({ ...base, id: "d", ownerId: "them", cloudRole: "owner" }, "me"));
 } catch (err) {
   console.error("\nHarness error: " + (err instanceof Error ? err.message : String(err)));
   failures++;

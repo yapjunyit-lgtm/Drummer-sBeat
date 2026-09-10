@@ -12,6 +12,7 @@ import ShareModal from "@/components/ShareModal";
 import { useAuth } from "@/components/AuthProvider";
 import {
   createCollection,
+  isOwnCollection,
   loadCollections,
   saveCollections,
   type ScoreCollection,
@@ -65,6 +66,16 @@ export default function DashboardPage() {
   /* Only show shared scores while signed in (derived, so no effect resets). */
   const visibleShared =
     authStatus === "signed-in" && cloudAvailable() ? shared : [];
+
+  /* Collections are split by ownership, like the scores tab above. You only
+     manage your own, so anything owned by another player gets its own section
+     and never shows a delete button. */
+  const myCollections = collections.filter((c) =>
+    isOwnCollection(c, user?.id)
+  );
+  const sharedCollections = collections.filter(
+    (c) => !isOwnCollection(c, user?.id)
+  );
 
   /* Pull the latest cloud state into the dashboard (used on sign-in, on
      manual Sync, and by the Realtime subscription below). */
@@ -276,7 +287,7 @@ export default function DashboardPage() {
 
   const createNewCollection = () => {
     const c = createCollection(
-      `New Collection ${collections.length + 1} 新项目集${collections.length + 1}`
+      `New Collection ${myCollections.length + 1} 新项目集${myCollections.length + 1}`
     );
     const next = [...collections, c];
     saveCollections(next);
@@ -315,6 +326,30 @@ export default function DashboardPage() {
           "Removed from your list 已从列表移除（他人共享的项目集仍属于对方）"
         );
       }
+    })();
+  };
+
+  /* Collections shared with you cannot be deleted — you do not own the row —
+     so this only takes it off your list. Opening it again brings it back. */
+  const removeSharedCollection = (c: ScoreCollection) => {
+    if (
+      !window.confirm(
+        "Remove this collection from your list? 从你的列表移除？对方的项目集不会被删除。"
+      )
+    ) {
+      return;
+    }
+    const next = collections.filter((x) => x.id !== c.id);
+    saveCollections(next);
+    setCollections(next);
+    if (!cloudAvailable() || authStatus !== "signed-in") return;
+    void (async () => {
+      const res = await removeCollectionForUser(c, user?.id);
+      setSyncNote(
+        res.ok
+          ? "Removed from your list 已从列表移除"
+          : `Could not remove 移除失败: ${res.error ?? "unknown error"}`
+      );
     })();
   };
 
@@ -579,7 +614,7 @@ export default function DashboardPage() {
           <section className="mb-10">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
-                Collections 项目集 · {collections.length}
+                Collections 项目集 · {myCollections.length}
               </h2>
               <button
                 onClick={createNewCollection}
@@ -591,7 +626,7 @@ export default function DashboardPage() {
                 New Collection 新建项目集
               </button>
             </div>
-            {collections.length === 0 ? (
+            {myCollections.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/40 p-10 text-center text-sm text-zinc-500">
                 <div className="mb-3 flex justify-center text-3xl text-amber-400/70">
                   <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="h-9 w-9" aria-hidden="true">
@@ -604,7 +639,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                {collections.map((c) => (
+                {myCollections.map((c) => (
                   <div
                     key={c.id}
                     className="group rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors hover:border-amber-500/60"
@@ -658,6 +693,54 @@ export default function DashboardPage() {
               </div>
             )}
           </section>
+
+          {/* Shared with me — owned by another player: open only, no delete. */}
+          {sharedCollections.length > 0 && (
+            <section className="mb-10">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+                Shared with me 与我共享 · {sharedCollections.length}
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {sharedCollections.map((c) => (
+                  <div
+                    key={c.id}
+                    className="rounded-2xl border border-cyan-500/30 bg-zinc-900/60 p-5 transition-colors hover:border-cyan-400/60"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <Link href={`/collections/${c.id}`} className="min-w-0">
+                        <h3 className="truncate font-semibold text-zinc-100 group-hover:text-cyan-300">
+                          {c.name}
+                        </h3>
+                      </Link>
+                      <span className="shrink-0 rounded-full border border-cyan-500/50 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
+                        {c.cloudRole === "viewer"
+                          ? "Viewer 查看"
+                          : "Editor 编辑"}
+                      </span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs text-zinc-500">
+                      {c.description || "Shared by another player 他人共享"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                      <span className="rounded-full border border-zinc-700 px-2 py-0.5">
+                        {c.pieceIds.length} pieces 曲目
+                      </span>
+                      <span className="rounded-full border border-zinc-700 px-2 py-0.5">
+                        {c.notes.blocks.length} notes 笔记
+                      </span>
+                      <button
+                        onClick={() => removeSharedCollection(c)}
+                        title="Remove from my list 从列表移除"
+                        className="ml-auto rounded-lg border border-zinc-700 px-2 py-0.5 text-xs text-zinc-300 transition-colors hover:border-cyan-400 hover:text-cyan-300"
+                      >
+                        Remove from list 移除
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
           </>
           )}
 
