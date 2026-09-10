@@ -138,7 +138,7 @@ try {
   check("editor claimed the shared collection", !!claimed.collection, String(claimed.error ?? ""));
   colStore.saveCollections([...(claimed.collection ? [claimed.collection] : [])]);
 
-  // editor removes it: not their row, so it can only be dismissed locally
+  // editor removes it: not their row, so they leave the collaboration instead
   const editorRemoved = await cc.removeCollectionForUser(claimed.collection!, editor.id);
   check("editor's removal reports a dismissal", editorRemoved.dismissed, JSON.stringify(editorRemoved));
   check(
@@ -165,9 +165,17 @@ try {
   const afterDismiss = cc.mergeCloudCollections(colStore.loadCollections(), editorCloud);
   check("dismissed collection does NOT come back on refresh", !afterDismiss.some((c) => c.id === collectionId), "it came back");
 
-  colStore.unhideCollection(collectionId);
-  const afterReopen = cc.mergeCloudCollections(colStore.loadCollections(), editorCloud);
-  check("opening it again restores it", afterReopen.some((c) => c.id === collectionId), "still hidden");
+  /* Recovery path after leaving: the share link still works, so claiming it
+     again re-creates the collaboration and the collection comes back. */
+  const reclaimed = await cc.claimCollectionInvite(invite.token);
+  check("re-opening the share link restores access", !!reclaimed.collection, String(reclaimed.error ?? ""));
+  if (reclaimed.collection) {
+    colStore.unhideCollection(reclaimed.collection.id);
+    colStore.saveCollections([...colStore.loadCollections(), reclaimed.collection]);
+  }
+  const { collections: editorCloudAfterReclaim } = await cc.fetchVisibleCollections();
+  const restored = cc.mergeCloudCollections(colStore.loadCollections(), editorCloudAfterReclaim);
+  check("and it is visible to the editor again", restored.some((c) => c.id === collectionId), "not visible after re-claiming");
 
   // owner removes it: that one is a real delete
   await supabase!.auth.signOut();
