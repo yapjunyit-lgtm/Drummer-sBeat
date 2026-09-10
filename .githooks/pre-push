@@ -1,0 +1,100 @@
+#!/bin/sh
+# ---------------------------------------------------------------------------
+# Drummer's Beat · pre-push identity guard
+#
+# RULE: every push from this repository must authenticate as yapjunyit-lgtm.
+#       The global GitHub account stays dashoilai5-lab, so other repos and
+#       other agents/threads on this machine are never affected.
+#
+# This is enforced by a repo-local credential pin (not committed — see the
+# "Git identity & pushes" section in AGENTS.md). The pin alone is not proof:
+# this hook re-checks, before any object is sent, that
+#   (1) the pin exists and names the expected account,
+#   (2) the token behind it really belongs to that account,
+#   (3) that account has push permission on the target repository.
+#
+# Enable per clone:  git config core.hooksPath .githooks
+# One-off bypass:    SKIP_IDENTITY_CHECK=1 git push
+# Override account:  git config push.expectedAccount <login>
+# ---------------------------------------------------------------------------
+
+set -u
+
+remote_name="${1:-origin}"
+remote_url="${2:-}"
+
+expected="${EXPECTED_ACCOUNT:-$(git config --local --get push.expectedAccount 2>/dev/null || true)}"
+[ -n "$expected" ] || expected="yapjunyit-lgtm"
+
+# Consume the ref list git feeds the hook on stdin (keeps the pipe clean).
+while read -r _ref_line; do :; done 2>/dev/null || true
+
+if [ "${SKIP_IDENTITY_CHECK:-}" = "1" ]; then
+  printf '\n\033[33m⚠  identity guard SKIPPED (SKIP_IDENTITY_CHECK=1)\033[0m\n' >&2
+  exit 0
+fi
+
+case "$remote_url" in
+  *github.com*)
+    ;;
+  *)
+    printf '\n\033[33m⚠  identity guard skipped: remote "%s" is not GitHub\033[0m\n' \
+      "$remote_url" >&2
+    exit 0
+    ;;
+esac
+
+gh_bin="${GH_BIN:-$(command -v gh 2>/dev/null || true)}"
+if [ -z "$gh_bin" ]; then
+  printf '\n\033[31m✖ identity guard: gh CLI not found — cannot verify the pushing account.\033[0m\n\n' >&2
+  exit 1
+fi
+
+# (1) The repo-local credential pin must name the expected account.
+if ! git config --local --get-all credential.https://github.com.helper 2>/dev/null \
+  | grep -q -- "$expected"; then
+  printf '\n\033[31m✖ identity guard: this repo is not pinned to %s.\033[0m\n' "$expected" >&2
+  printf '  Refusing to push so the global account never pushes here by accident.\n' >&2
+  printf '  Fix: see "Git identity & pushes" in AGENTS.md.\n\n' >&2
+  exit 1
+fi
+
+# (2) The token behind that pin must really belong to the expected account.
+token=$("$gh_bin" auth token --user "$expected" 2>/dev/null || true)
+if [ -z "$token" ]; then
+  printf '\n\033[31m✖ identity guard: no stored token for %s (run: gh auth login).\033[0m\n\n' "$expected" >&2
+  exit 1
+fi
+
+login=$(GH_TOKEN="$token" "$gh_bin" api user --jq .login 2>/dev/null || true)
+if [ "$login" != "$expected" ]; then
+  printf '\n\033[31m✖ identity guard: credential resolves to "%s", expected "%s".\033[0m\n\n' \
+    "${login:-unknown}" "$expected" >&2
+  exit 1
+fi
+
+# (3) That account must be allowed to push to the target repository.
+# Parse owner/repo without sed: BSD sed lacks lazy quantifiers, which silently
+# produced an empty slug and skipped this check entirely.
+slug="${remote_url#*github.com}"
+slug="${slug#:}"
+slug="${slug#/}"
+slug="${slug%.git}"
+slug="${slug%/}"
+case "$slug" in
+  */*) ;;
+  *) slug="" ;;
+esac
+if [ -n "$slug" ]; then
+  can_push=$(GH_TOKEN="$token" "$gh_bin" api "repos/$slug" --jq '.permissions.push' 2>/dev/null || true)
+  if [ "$can_push" != "true" ]; then
+    printf '\n\033[31m✖ identity guard: %s has no push access to %s.\033[0m\n\n' \
+      "$expected" "$slug" >&2
+    exit 1
+  fi
+fi
+
+printf '\n\033[32m✓ identity guard: pushing as %s → %s\033[0m\n' \
+  "$login" "${slug:-$remote_name}" >&2
+printf '  global gh account stays dashoilai5-lab (other repos/agents unaffected)\n' >&2
+exit 0
