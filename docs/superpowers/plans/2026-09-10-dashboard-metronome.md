@@ -1204,6 +1204,42 @@ git commit -m "docs(metronome): status + hardening pass"
 
 ---
 
+## Deviations during implementation
+
+Recorded so the plan matches what actually shipped. Each was forced by a
+verification, not a preference.
+
+1. **Verify scripts need explicit `.ts` import extensions.** Node's ESM
+   resolver does not guess extensions (proved: extensionless → `ERR_MODULE_NOT_FOUND`,
+   `./x.ts` → loads). `moduleResolution: "bundler"` rejected that with TS5097,
+   so `tsconfig.json` gained `"allowImportingTsExtensions": true` (harmless
+   without emit, and already `noEmit`). Run command is now
+   `node --import ./scripts/alias-hook.mjs scripts/verify-metronome.mts`.
+2. **`scripts/alias-hook.mjs` added.** `src/lib` imports siblings exclusively
+   through the `@/lib/...` alias (verified: zero relative sibling imports), so
+   loading `metronomeSettings.ts` from plain Node needs that alias taught to
+   Node. The hook registers a resolve mapping for `@/` and tries the extensions
+   Node will not guess. Source style was left untouched.
+3. **The panel is mount-scoped, not `open`-prop driven.** The dashboard renders
+   it only while open, and settings load in a `useState` lazy initialiser.
+   Reason: the repo's React 19 lint rule `react-hooks/set-state-in-effect`
+   rejects `setState` in an effect body, and the original `open` effect would
+   additionally have written defaults over the just-loaded settings on first
+   open.
+4. **Settings save on user action, not in an effect.** Same root cause, and it
+   removes the first-open overwrite window entirely.
+5. **Task 3's isolation grep stays exact.** The rationale comment names the
+   global transport in lowercase prose only, so `rg -n "Transport"` over the
+   three metronome lib files returns nothing — the invariant is "these files
+   never name the object", which is checkable.
+6. **Runtime verification is outstanding.** `npx tsc --noEmit`,
+   `npx eslint`, and the Node checks all pass, but this build environment cannot
+   load native bindings (`@next/swc-darwin-arm64` and `lightningcss` both fail
+   with a code-signature `Team IDs` error), so `next build` and `next dev`
+   return 500. Confirmed pre-existing: an isolated `main` worktree fails
+   identically. The audio behaviour has therefore **not** been heard yet — see
+   Task 6 Step 2 for the manual list.
+
 ## Out of scope for v1
 
 - Practice speed trainer (automatic tempo ramp over N measures).

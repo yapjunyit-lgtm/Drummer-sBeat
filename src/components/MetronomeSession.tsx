@@ -119,17 +119,23 @@ export default function MetronomeSession({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const typing =
+      /* Space and T belong to the focused control when one has focus. The
+         panel autofocuses Start, and a button activates natively on Space — so
+         without this guard a Space press would run both the native click and
+         this handler, starting and immediately stopping. */
+      const ownedByControl =
         target instanceof HTMLInputElement ||
         target instanceof HTMLSelectElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLButtonElement ||
         target?.isContentEditable === true;
       if (event.key === "Escape") {
         event.preventDefault();
         close();
-      } else if (event.code === "Space" && !typing) {
+      } else if (event.code === "Space" && !ownedByControl) {
         event.preventDefault();
         toggle();
-      } else if ((event.key === "t" || event.key === "T") && !typing) {
+      } else if ((event.key === "t" || event.key === "T") && !ownedByControl) {
         tap();
       }
     };

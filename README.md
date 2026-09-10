@@ -19,6 +19,10 @@ create, edit, share, and discover drum scores.
 - ✅ Collaboration: Supabase-backed accounts (email/Google), cloud save,
   share links, invite-by-email, editor/viewer roles, realtime sync with
   revision-based conflict handling. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- ✅ Standalone metronome: dashboard-launched practice session with its own
+  lookahead scheduler (isolated from score playback), adjustable BPM, tap
+  tempo, time signature, subdivisions, accent, count-in and a synced beat
+  indicator.
 - ⏳ Phase 2: cloud save + accounts (Supabase).
 - ⏳ Phase 3: community hub, likes, comments, bookmarks, forks.
 - ⏳ Phase 4: SVG notation strip, PDF/PNG export, zh/en i18n.
