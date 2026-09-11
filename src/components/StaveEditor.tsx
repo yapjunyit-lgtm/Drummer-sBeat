@@ -2786,6 +2786,12 @@ export default function StaveEditor() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      /* An open overlay owns the keyboard. Without this, Space would start
+         score playback underneath the metronome panel while it also started
+         the click, and "t" would retune the score to a triplet on every tap
+         tempo. Both handlers listen on window, so the guard has to live here —
+         the metronome cannot suppress a listener that already ran. */
+      if (metronomeOpen) return;
       switch (e.key) {
         case "1":
           chooseZone("center");
@@ -2899,6 +2905,7 @@ export default function StaveEditor() {
     drummerCount,
     handlePlay,
     measureCount,
+    metronomeOpen,
     notes,
     pasteClipboard,
     redo,
