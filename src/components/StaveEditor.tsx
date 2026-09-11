@@ -26,6 +26,7 @@ import { useAuth } from "@/components/AuthProvider";
 import CombineModal from "@/components/CombineModal";
 import GroupEditorModal from "@/components/GroupEditorModal";
 import GroupPreviewButton from "@/components/GroupPreviewButton";
+import MetronomeSession from "@/components/MetronomeSession";
 import ScoreNoteModal from "@/components/ScoreNoteModal";
 import ShareModal from "@/components/ShareModal";
 import {
@@ -592,6 +593,7 @@ export default function StaveEditor() {
   const [exporting, setExporting] = useState(false);
   const [combineOpen, setCombineOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [metronomeOpen, setMetronomeOpen] = useState(false);
   const [syncFlag, setSyncFlag] = useState<"idle" | "saving" | "error">("idle");
   /* Derived sync status: static states (local / signed-out / synced) are
      computed during render; only saving/error transitions are state. */
@@ -3444,6 +3446,29 @@ export default function StaveEditor() {
                   {bpm}
                 </span>
               </label>
+              {/* Standalone practice metronome. Independent of the score and
+                  of the transport above, so it can run alongside playback. */}
+              <button
+                onClick={() => setMetronomeOpen(true)}
+                title="Standalone practice metronome 独立节拍器"
+                className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mr-1 inline h-3.5 w-3.5 align-text-bottom"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3 5 20h14L12 3Z" />
+                  <path d="M12 3v9" />
+                  <path d="m15.5 8.5-3.5 3.5" />
+                </svg>
+                Metronome 节拍器
+              </button>
               {syncStatus === "local" && (
                 <span
                   title="Local mode — connect Supabase to share 本地模式，配置 Supabase 后可分享"
@@ -4757,6 +4782,10 @@ export default function StaveEditor() {
           updateProject((p) => ({ ...p, visibility }))
         }
       />
+
+      {metronomeOpen && (
+        <MetronomeSession onClose={() => setMetronomeOpen(false)} />
+      )}
     </>
   );
 }
