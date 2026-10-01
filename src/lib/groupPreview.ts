@@ -1,52 +1,16 @@
 "use client";
 
 import * as Tone from "tone";
-import { masterBus, ZONE_BASE_DB } from "@/lib/audioLevels";
+import { buildDrumVoices } from "@/lib/drumVoices";
 import { SLOTS_PER_BEAT, type RhythmGroup } from "@/lib/projects";
 
 /* Shared one-shot audio engine for previewing rhythm groups (鼓心 / 鼓边 /
    鼓棒), matching the sounds used by the main editor. */
-let engine: {
-  center: Tone.MembraneSynth;
-  edge: Tone.NoiseSynth;
-  rim: Tone.NoiseSynth;
-} | null = null;
+let engine: ReturnType<typeof buildDrumVoices> | null = null;
 let finishResolve: (() => void) | null = null;
 
 function ensureEngine() {
-  if (engine) return engine;
-
-  const center = new Tone.MembraneSynth({
-    pitchDecay: 0.05,
-    octaves: 3,
-    envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
-  }).connect(masterBus());
-  center.volume.value = ZONE_BASE_DB.center;
-
-  const edgeFilter = new Tone.Filter({
-    type: "bandpass",
-    frequency: 1800,
-    Q: 1.2,
-  }).connect(masterBus());
-  const edge = new Tone.NoiseSynth({
-    noise: { type: "pink" },
-    envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
-  }).connect(edgeFilter);
-  edge.volume.value = ZONE_BASE_DB.edge;
-
-  const rimFilter = new Tone.Filter({
-    type: "highpass",
-    frequency: 4500,
-    Q: 0.8,
-  }).connect(masterBus());
-  const rim = new Tone.NoiseSynth({
-    noise: { type: "white" },
-    envelope: { attack: 0.001, decay: 0.07, sustain: 0, release: 0.04 },
-  }).connect(rimFilter);
-  rim.volume.value = ZONE_BASE_DB.rim;
-
-  engine = { center, edge, rim };
-  return engine;
+  return (engine ??= buildDrumVoices());
 }
 
 /* Play a group once at the given BPM. Resolves when playback finishes. */
@@ -55,7 +19,7 @@ export async function previewGroup(
   bpm = 120
 ): Promise<void> {
   await Tone.start();
-  const eng = ensureEngine();
+  const eng = await ensureEngine();
 
   // Interrupt any preview that is still playing.
   Tone.Transport.stop();
@@ -83,7 +47,7 @@ export async function previewGroup(
   for (const n of scheduled) {
     const time = (n.measure * 4 + n.slot / SLOTS_PER_BEAT) * beat;
     Tone.Transport.schedule((t) => {
-      if (n.zone === "center") eng.center.triggerAttackRelease("C2", "8n", t);
+      if (n.zone === "center") eng.center.triggerAttackRelease("8n", t);
       else if (n.zone === "edge") eng.edge.triggerAttackRelease("8n", t);
       else eng.rim.triggerAttackRelease("32n", t);
     }, time);

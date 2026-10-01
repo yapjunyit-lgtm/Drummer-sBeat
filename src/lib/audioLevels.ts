@@ -1,17 +1,5 @@
-/* Shared output levels for every drum voice in the app.
-
-   Why this module exists: the samples themselves are fine (gu-xin peaks at
-   -2.2 dBFS, gu-bian at -7.3 dBFS), but the voices used to attenuate by
-   13-20 dB before they reached the speakers. At the default drummer volume
-   (60) the effective levels were:
-
-       鼓心 center  -13.6 dB      鼓边 edge  -11.6 dB
-       鼓棒 rim     -19.6 dB
-
-   which is why the score was barely audible even at full system volume. The
-   levels below raise everything into a usable range and route every voice
-   through one master bus (gain → brickwall limiter) so the extra level does
-   not clip when several drummers hit at once. */
+/* Shared output levels for drum voices and metronome. All voices route
+   through a gain and limiter so simultaneous drummers cannot clip. */
 
 import * as Tone from "tone";
 

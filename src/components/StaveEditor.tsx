@@ -29,11 +29,7 @@ import GroupPreviewButton from "@/components/GroupPreviewButton";
 import MetronomeSession from "@/components/MetronomeSession";
 import ScoreNoteModal from "@/components/ScoreNoteModal";
 import ShareModal from "@/components/ShareModal";
-import {
-  drummerVolumeDb,
-  masterBus,
-  ZONE_BASE_DB,
-} from "@/lib/audioLevels";
+import { drummerVolumeDb, ZONE_BASE_DB } from "@/lib/audioLevels";
 import {
   claimShareInvite,
   cloudAvailable,
@@ -70,6 +66,7 @@ import {
   type ScoreNote,
   type ZoneId,
 } from "@/lib/projects";
+import { buildDrumVoices, type EngineZoneVoice } from "@/lib/drumVoices";
 import { supabase } from "@/lib/supabase";
 
 /* ------------------------------------------------------------------ */
@@ -448,101 +445,6 @@ function SlotCell({
 /* ------------------------------------------------------------------ */
 /* Editor                                                              */
 /* ------------------------------------------------------------------ */
-
-/* Engine voice: every zone exposes the same trigger API. */
-interface EngineZoneVoice {
-  volume: Tone.Param<"decibels">;
-  triggerAttackRelease: (duration: string, time?: number) => void;
-  dispose: () => void;
-}
-
-/* Load a drum sample (public/samples) as a retriggerable voice, with
-   optional pitch/colour processing (playbackRate, lowpass, highpass). */
-async function buildSampleZoneVoice(
-  url: string,
-  volume: number,
-  opts?: {
-    playbackRate?: number;
-    lowpass?: number;
-    highpass?: number;
-  }
-): Promise<EngineZoneVoice | null> {
-  try {
-    // Load the buffer FIRST (await the promise), then hand it to the Player —
-    // player.loaded is a boolean, not a Promise, so awaiting it returned
-    // instantly and playback could race ahead of the sample load.
-    const buffer = await Tone.ToneAudioBuffer.fromUrl(url);
-    const player = new Tone.Player({
-      url: buffer,
-      loop: false,
-      playbackRate: opts?.playbackRate ?? 1,
-    });
-    const out = new Tone.Volume(volume).connect(masterBus());
-    const fx: Tone.ToneAudioNode[] = [];
-    if (opts?.lowpass) {
-      fx.push(
-        new Tone.Filter({ type: "lowpass", frequency: opts.lowpass, Q: 0.7 })
-      );
-    }
-    if (opts?.highpass) {
-      fx.push(
-        new Tone.Filter({ type: "highpass", frequency: opts.highpass, Q: 0.7 })
-      );
-    }
-    player.chain(...fx, out);
-    return {
-      volume: out.volume,
-      triggerAttackRelease: (_duration, time) => {
-        player.start(time ?? Tone.now());
-      },
-      dispose: () => {
-        player.dispose();
-        for (const f of fx) f.dispose();
-        out.dispose();
-      },
-    };
-  } catch {
-    return null;
-  }
-}
-
-/* Synth fallbacks (used if the samples cannot be loaded). */
-function buildSynthCenterVoice(): EngineZoneVoice {
-  const synth = new Tone.MembraneSynth({
-    pitchDecay: 0.05,
-    octaves: 3,
-    envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.2 },
-  }).connect(masterBus());
-  synth.volume.value = ZONE_BASE_DB.center;
-  return {
-    volume: synth.volume,
-    triggerAttackRelease: (duration, time) =>
-      synth.triggerAttackRelease("C2", duration, time),
-    dispose: () => synth.dispose(),
-  };
-}
-
-function buildSynthEdgeVoice(): EngineZoneVoice {
-  const filter = new Tone.Filter({
-    type: "bandpass",
-    frequency: 1800,
-    Q: 1.2,
-  }).connect(masterBus());
-  const noise = new Tone.NoiseSynth({
-    noise: { type: "pink" },
-    envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.08 },
-  }).connect(filter);
-  noise.volume.value = ZONE_BASE_DB.edge;
-  return {
-    volume: noise.volume,
-    triggerAttackRelease: (duration, time) =>
-      noise.triggerAttackRelease(duration, time),
-    dispose: () => {
-      noise.dispose();
-      filter.dispose();
-    },
-  };
-}
 
 export default function StaveEditor() {
   const router = useRouter();
@@ -1476,59 +1378,7 @@ export default function StaveEditor() {
     await Tone.start();
     const base = engineRef.current ?? { drummers: [] };
     while (base.drummers.length < count) {
-      // One voice per drummer so each has an independent volume.
-      // 鼓心 + 鼓边 use the approved Real Kit samples (bassier 鼓心,
-      // brighter 鼓边); fall back to synthesis if a sample fails to load.
-      const center =
-        (await buildSampleZoneVoice("/samples/gu-xin.wav", ZONE_BASE_DB.center, {
-          // Approved: more solid — mid body through, tighter pitch.
-          playbackRate: 0.9,
-          lowpass: 800,
-        })) ?? buildSynthCenterVoice();
-      const edge =
-        (await buildSampleZoneVoice("/samples/gu-bian.wav", ZONE_BASE_DB.edge, {
-          playbackRate: 1.12,
-          highpass: 2100,
-        })) ?? buildSynthEdgeVoice();
-
-      // 鼓棒 (Dik): dry two-stick click — a very short white-noise burst
-      // through a highpass plus a 2.4kHz wood tick (selected in Sound Lab).
-      const rimOut = new Tone.Volume(ZONE_BASE_DB.rim).connect(masterBus());
-      const rimNoise = new Tone.NoiseSynth({
-        noise: { type: "white" },
-        envelope: { attack: 0.001, decay: 0.022, sustain: 0, release: 0.015 },
-      });
-      const rimHp = new Tone.Filter({
-        type: "highpass",
-        frequency: 5000,
-        Q: 0.7,
-      });
-      rimNoise.chain(rimHp, rimOut);
-      const rimTick = new Tone.Oscillator({ type: "sine", frequency: 2400 });
-      const rimTickEnv = new Tone.AmplitudeEnvelope({
-        attack: 0.001,
-        decay: 0.022,
-        sustain: 0,
-        release: 0.015,
-      });
-      rimTick.chain(rimTickEnv, rimOut);
-      rimTick.start();
-      const rim = {
-        volume: rimOut.volume,
-        triggerAttackRelease: (duration: string, time?: number) => {
-          rimNoise.triggerAttackRelease(duration, time);
-          rimTickEnv.triggerAttackRelease(0.022, time);
-        },
-        dispose: () => {
-          rimNoise.dispose();
-          rimHp.dispose();
-          rimTick.dispose();
-          rimTickEnv.dispose();
-          rimOut.dispose();
-        },
-      };
-
-      base.drummers.push({ center, edge, rim });
+      base.drummers.push(await buildDrumVoices());
     }
     engineRef.current = base;
     return base;
