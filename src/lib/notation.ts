@@ -29,7 +29,7 @@ export const ZONES: {
     en: "Drum Center",
     key: "e/4",
     symbol: "●",
-    cellClass: "bg-red-500/80 border-red-400",
+    cellClass: "bg-red-500/15 border-red-400",
   },
   {
     id: "edge",
@@ -37,7 +37,7 @@ export const ZONES: {
     en: "Drum Edge",
     key: "e/4",
     symbol: "✕",
-    cellClass: "bg-amber-500/80 border-amber-400",
+    cellClass: "bg-amber-500/15 border-amber-400",
   },
   {
     id: "rim",
@@ -45,7 +45,7 @@ export const ZONES: {
     en: "Drumstick",
     key: "e/4",
     symbol: "▷",
-    cellClass: "bg-sky-500/80 border-sky-400",
+    cellClass: "bg-sky-500/15 border-sky-400",
   },
 ];
 

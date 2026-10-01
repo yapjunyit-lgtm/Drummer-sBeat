@@ -1,180 +1,99 @@
 import Link from "next/link";
 import AuthButton from "@/components/AuthButton";
+import Brand from "@/components/Brand";
 
-const FEATURES = [
-  {
-    zh: "音色分区",
-    en: "Three sound zones",
-    desc: "鼓心 (center), 鼓边 (edge) and 鼓棒 (drumstick) hits on one visual grid.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" className="h-5 w-5">
-        <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" />
-        <rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5" />
-        <rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5" />
-        <rect x="13" y="13" width="7.5" height="7.5" rx="1.5" />
-      </svg>
-    ),
-  },
-  {
-    zh: "节奏编排",
-    en: "Rhythm patterns",
-    desc: "Quarter, eighth, triplet, 16th and 32nd slots per beat.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" className="h-5 w-5">
-        <rect x="4" y="10" width="3" height="9" rx="1" />
-        <rect x="9.5" y="6" width="3" height="13" rx="1" />
-        <rect x="15" y="8.5" width="3" height="10.5" rx="1" />
-        <rect x="20" y="12" width="3" height="7" rx="1" />
-      </svg>
-    ),
-  },
-  {
-    zh: "即时回放",
-    en: "Real-time playback",
-    desc: "Tone.js audio engine with a playhead that sweeps the score.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-        <circle cx="12" cy="12" r="9" />
-        <path d="m9.5 8.5 6 3.5-6 3.5z" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    zh: "社区分享",
-    en: "Community hub",
-    desc: "Publish, discover, like, comment and fork scores. Phase 3.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-        <circle cx="8" cy="7" r="3" />
-        <circle cx="17" cy="10" r="3" />
-        <circle cx="8" cy="17" r="3" />
-        <path d="M10.5 8.5 15 9.5M10.5 15.5 15 14.5" />
-      </svg>
-    ),
-  },
-];
-
-const ZONE_ROW = [
-  {
-    symbol: "●",
-    zh: "鼓心",
-    en: "Center",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-        <circle cx="12" cy="12" r="8" />
-      </svg>
-    ),
-  },
-  {
-    symbol: "✕",
-    zh: "鼓边",
-    en: "Edge",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-        <circle cx="12" cy="12" r="8" />
-        <circle cx="8.4" cy="15.6" r="2.4" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    symbol: "▷",
-    zh: "鼓棒",
-    en: "Drumstick",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
-        <path d="M6 18 16 8" />
-        <circle cx="16.5" cy="7.5" r="2.4" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
+const STEPS = [
+  ["Write your rhythm", "写下节奏", "Choose drum heart, drum side or drumstick. Place your notes directly on the score."],
+  ["Hear it take shape", "聆听回放", "Play your score with recorded drum sounds. Adjust the tempo or practise with the metronome."],
+  ["Bring everyone together", "一起排练", "Arrange parts for your drummers, share scores with collaborators, and export a PDF for rehearsal."],
 ];
 
 export default function Home() {
   return (
     <main id="main" className="flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-6">
-        <span className="text-lg font-bold tracking-tight">
-          Drummer&apos;s Beat <span className="text-zinc-500">· 节拍鼓韵</span>
-        </span>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white"
-          >
-            My Dashboard 我的项目
+      <header className="site-header">
+        <Brand />
+        <nav aria-label="Main navigation" className="flex items-center gap-3 sm:gap-6">
+          <Link href="/dashboard" className="text-sm font-medium text-zinc-300 hover:text-amber-300">
+            My scores <span className="hidden sm:inline">我的乐谱</span>
           </Link>
           <AuthButton />
-        </div>
+        </nav>
       </header>
-
-      <section className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center overflow-hidden px-4 pb-24 pt-20 text-center">
-        {/* One contained accent: a warm drum-energy glow behind the hero. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-[-220px] h-[520px] w-[720px] -translate-x-1/2 rounded-full opacity-60"
-          style={{
-            background:
-              "radial-gradient(closest-side, rgb(242 169 59 / 0.16), transparent)",
-          }}
-        />
-        <div className="animate-fade-up relative">
-          <p className="mb-5 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-sm text-amber-300">
-            为二十四节令鼓而生的在线鼓谱编辑器
+      <section className="hero">
+        <div className="animate-fade-up">
+          <h1>Give your <em>rhythm</em> a home.</h1>
+          <p className="hero-copy mt-7">
+            A thoughtful workspace for 24 Festive Drums.
+            Write a score, hear each beat, and bring your ensemble together.
           </p>
-          <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
-            Compose for{" "}
-            <span className="text-amber-400">24 Festive Drums</span>
-            <span className="text-zinc-500"> in your browser.</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-zinc-400">
-            Click beats to build 鼓心, 鼓边 and 鼓棒 rhythms, hear them
-            instantly, and export a score worthy of the stage.
-          </p>
-          <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              href="/dashboard"
-              className="rounded-xl bg-amber-500 px-7 py-3 text-base font-semibold text-zinc-950 shadow-lg shadow-amber-500/20 transition-colors hover:bg-amber-400"
-            >
-              Start Composing
+          <p className="mt-3 text-sm text-zinc-500">为二十四节令鼓而生，写谱、回放、一起排练。</p>
+          <div className="mt-8 flex flex-wrap items-center gap-6">
+            <Link href="/dashboard" className="primary-action">
+              Start composing 开始写谱
+              <span className="action-arrow" aria-hidden="true">↗</span>
             </Link>
-            <a
-              href="#features"
-              className="rounded-xl border border-zinc-700 px-7 py-3 text-base font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white"
-            >
+            <a href="#how-it-works" className="text-sm font-medium text-zinc-300 underline decoration-zinc-700 underline-offset-4 hover:text-amber-300">
               How it works
             </a>
           </div>
-          <div className="mt-12 flex items-center justify-center gap-6 text-sm text-zinc-500">
-            {ZONE_ROW.map((z) => (
-              <span key={z.en} className="flex items-center gap-2">
-                <span className="text-amber-400">{z.icon}</span>
-                {z.zh} <span className="hidden text-zinc-600 sm:inline">{z.en}</span>
-              </span>
-            ))}
-          </div>
         </div>
-      </section>
-
-      <section id="features" className="mx-auto w-full max-w-5xl px-4 py-20">
-        <div className="grid gap-x-12 gap-y-10 sm:grid-cols-2">
-          {FEATURES.map((f) => (
-            <div key={f.en} className="border-t border-zinc-800 pt-6">
-              <div className="flex items-center gap-3">
-                <span className="text-amber-400/80">{f.icon}</span>
-                <h2 className="text-xl font-semibold tracking-tight">{f.zh}</h2>
-                <span className="text-sm text-zinc-500">{f.en}</span>
+        <figure className="preview-shell animate-fade-up">
+          <div className="preview-core">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">A rhythm, at a glance.</h2>
+                <p className="mt-1 text-xs text-zinc-500">Your notes. Your ensemble. 一起合奏。</p>
               </div>
-              <p className="mt-2 max-w-[52ch] text-sm leading-6 text-zinc-400">
-                {f.desc}
-              </p>
+              <span className="rounded-full bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-300">4 / 4</span>
             </div>
-          ))}
-        </div>
+            <svg viewBox="0 0 440 190" className="preview-score" role="img" aria-label="Illustrative drum score: two measures with heart, side and drumstick notes">
+              <path d="M12 78h416" stroke="#cfc6b7" strokeWidth="0.8" />
+              <path d="M12 62v32M218 62v32M426 62v32M430 62v32" stroke="currentColor" strokeWidth="1.4" />
+              {[48, 92, 140, 184, 260, 304, 350, 394].map((x, i) => (
+                <g key={x}>
+                  <path d={`M${x + 5} 78V35`} stroke="currentColor" strokeWidth="1.5" />
+                  {i === 2 || i === 5 ? (
+                    <path d={`m${x - 5} 73 10 10m0-10-10 10`} stroke="currentColor" strokeWidth="2" />
+                  ) : i === 6 ? (
+                    <path d={`M${x - 4} 73v10l10-5Z`} fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  ) : <ellipse cx={x} cy="78" rx="6" ry="4.5" fill="currentColor" transform={`rotate(-20 ${x} 78)`} />}
+                  <text x={x} y="138" textAnchor="middle" fontSize="11" fill="#71695e">{i % 4 + 1}</text>
+                </g>
+              ))}
+              <text x="15" y="20" fontSize="11" fill="#71695e">Drummer 1 鼓手 1</text>
+            </svg>
+            <div className="zone-legend">
+              <span><b className="text-amber-300" aria-hidden="true">●</b> Heart 鼓心</span>
+              <span><b className="text-amber-300" aria-hidden="true">✕</b> Side 鼓边</span>
+              <span><b className="text-amber-300" aria-hidden="true">▷</b> Stick 鼓棒</span>
+            </div>
+            <figcaption className="mt-5 border-t border-zinc-800 pt-4 text-xs text-zinc-500">
+              An illustrative pattern — turn your own ideas into a score.
+            </figcaption>
+          </div>
+        </figure>
       </section>
-
-      <footer className="border-t border-zinc-900 py-8 text-center text-sm text-zinc-600">
-        Drummer&apos;s Beat · MVP editor. Next up: accounts &amp; the
-        community hub.
+      <section id="how-it-works" className="home-features">
+        <div>
+          <h2 className="max-w-72 text-3xl font-medium leading-tight tracking-tight">From the first beat to rehearsal.</h2>
+          <p className="mt-5 max-w-72 text-sm leading-7 text-zinc-400">Keep the music in focus. A clear score, familiar controls, and the sound of your drums.</p>
+        </div>
+        <ol>
+          {STEPS.map(([title, zh, description], i) => (
+            <li key={title} className="home-feature">
+              <span className="pt-1 text-xs font-medium text-amber-300">0{i + 1}</span>
+              <div>
+                <h3 className="text-lg font-semibold tracking-tight">{title} <span className="ml-2 text-xs font-normal text-zinc-500">{zh}</span></h3>
+                <p className="mt-2 max-w-[55ch] text-sm leading-7 text-zinc-400">{description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+      <footer className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 border-t border-zinc-800 px-6 py-8 text-xs text-zinc-500">
+        <span>Drummer&apos;s Beat · 二十四节令鼓</span>
+        <Link href="/dashboard" className="hover:text-amber-300">Return to your scores →</Link>
       </footer>
     </main>
   );

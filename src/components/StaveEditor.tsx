@@ -220,11 +220,11 @@ function ToolGroup({
   return (
     <div
       className={[
-        "flex min-w-0 flex-col gap-1 px-2 py-1",
+        "editor-tool-group flex min-w-0 flex-col",
         className ?? "",
       ].join(" ")}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+      <span className="editor-tool-label">
         {label}
       </span>
       <div className="flex flex-wrap items-center gap-1">
@@ -471,7 +471,7 @@ export default function StaveEditor() {
   const [showSettings, setShowSettings] = useState(false);
   /* Sidebar categories: which panels are expanded (quick access). */
   const [openSections, setOpenSections] = useState<Set<string>>(
-    () => new Set(["tools", "edit", "measureParts", "groups"])
+    () => new Set(["tools", "edit"])
   );
   const toggleSection = useCallback((id: string) => {
     setOpenSections((prev) => {
@@ -484,7 +484,7 @@ export default function StaveEditor() {
   /* Ribbon tab currently shown (Word-style). */
   const [activeTab, setActiveTab] = useState<
     "home" | "notes" | "ensemble" | "score"
-  >("home");
+  >("notes");
   const [currentPage, setCurrentPage] = useState(0);
   const [pageScale, setPageScale] = useState(1);
   const [fitAvailW, setFitAvailW] = useState(0);
@@ -1075,8 +1075,10 @@ export default function StaveEditor() {
               if (multiDrummer) {
                 const label = colorFor(part);
                 ctx.save();
-                ctx.setFont('bold 9px sans-serif');
                 ctx.setFillStyle(ghost ? `${label}66` : label);
+                ctx.fillRect(x - 26, y + 20, 12, 2);
+                ctx.setFont('bold 9px sans-serif');
+                ctx.setFillStyle(ghost ? "#756c5f" : "#282720");
                 // Outside the system bracket (to the left of it).
                 ctx.fillText(`D${part + 1}`, x - 26, y + 17);
                 ctx.restore();
@@ -3105,7 +3107,7 @@ export default function StaveEditor() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5">
+      <div className="editor-workspace flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* Project settings: name, description and author — printed on the
             first page of the score, centred in Times New Roman. */}
         {showSettings && !viewMode && (
@@ -3175,62 +3177,13 @@ export default function StaveEditor() {
 
         {/* Ribbon toolbar: Word-style tabs with groups under each tab. The
             transport (play/BPM) stays visible as a quick-access area. */}
-        {!viewMode && (
-        <div className="shrink-0 bg-zinc-950/40">
-          <div className="flex flex-wrap items-center gap-1 border-b border-zinc-800 px-2">
-            {(
-              [
-                ["home", "Home 主页"],
-                ["notes", "Notes 音符"],
-                ["ensemble", "Ensemble 鼓手"],
-                ["score", "Score 乐谱"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                aria-pressed={activeTab === id}
-                className={[
-                  "border-b-2 px-3 py-2 text-xs font-semibold transition-colors",
-                  activeTab === id
-                    ? "border-amber-500 text-amber-300"
-                    : "border-transparent text-zinc-400 hover:text-zinc-100",
-                ].join(" ")}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom"
-                  aria-hidden="true"
-                >
-                  {id === "home" && (
-                    <path d="m3 10.5 9-7 9 7V20a1.5 1.5 0 0 1-1.5 1.5H15V15h-6v6.5H4.5A1.5 1.5 0 0 1 3 20z" />
-                  )}
-                  {id === "notes" && (
-                    <>
-                      <path d="M9 18V5l12-2v13" />
-                      <circle cx="6" cy="18" r="3" />
-                      <circle cx="18" cy="16" r="3" />
-                    </>
-                  )}
-                  {id === "ensemble" && (
-                    <>
-                      <circle cx="12" cy="15" r="7" />
-                      <path d="M9 9 4.5 4.5M15 9l4.5-4.5" />
-                    </>
-                  )}
-                  {id === "score" && (
-                    <path d="M5 21h14M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M9 7h6M9 11h6M9 15h4" />
-                  )}
-                </svg>
-                {label}
-              </button>
-            ))}
-            <div className="ml-auto flex items-center gap-1.5 pl-1.5">
+        <div className="editor-toolbar">
+            <div className="editor-transport">
+              <div className="editor-title">
+                <h1 title={project?.name}>{project?.name}</h1>
+                <p>{measureCount} bars 小节 · {drummerCount} drummer{drummerCount === 1 ? "" : "s"} 鼓手</p>
+              </div>
+              {!viewMode && (
               <button
                 onClick={() => {
                   if (isPlaying) {
@@ -3257,8 +3210,9 @@ export default function StaveEditor() {
                 <svg viewBox="0 0 24 24" fill="currentColor" className="mr-1 inline h-3 w-3 align-text-bottom" aria-hidden="true">
                   <path d="M7 5.5v13l11-6.5z" />
                 </svg>
-                From 从..
+                From note 从音符
               </button>
+              )}
               <button
                 onClick={handlePlay}
                 className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-amber-400"
@@ -3329,7 +3283,7 @@ export default function StaveEditor() {
               {syncStatus === "local" && (
                 <span
                   title="Local mode — connect Supabase to share 本地模式，配置 Supabase 后可分享"
-                  className="rounded-md border border-zinc-800 px-2 py-1 text-[11px] font-semibold text-zinc-500"
+                  className="hidden rounded-md border border-zinc-800 px-2 py-1 text-[11px] font-semibold text-zinc-500 sm:inline"
                 >
                   Local 本地
                 </span>
@@ -3384,9 +3338,72 @@ export default function StaveEditor() {
                 </svg>
                 Share 分享
               </button>
+              <button
+                onClick={() => setViewMode((v) => !v)}
+                aria-pressed={viewMode}
+                className="rounded-full border border-zinc-700 font-semibold text-zinc-300 hover:border-amber-500 hover:text-amber-300"
+              >
+                {viewMode ? "Edit score 编辑" : "Read score 阅读"}
+              </button>
             </div>
+          {!viewMode && (
+          <>
+          <div className="editor-tabs">
+            {(
+              [
+                ["notes", "Write 写谱"],
+                ["home", "Project 项目"],
+                ["ensemble", "Drummers 鼓手"],
+                ["score", "Score 乐谱"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                aria-pressed={activeTab === id}
+                className={[
+                  "border-b-2 px-3 py-2 text-xs font-semibold transition-colors",
+                  activeTab === id
+                    ? "border-amber-500 text-amber-300"
+                    : "border-transparent text-zinc-400 hover:text-zinc-100",
+                ].join(" ")}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom"
+                  aria-hidden="true"
+                >
+                  {id === "home" && (
+                    <path d="m3 10.5 9-7 9 7V20a1.5 1.5 0 0 1-1.5 1.5H15V15h-6v6.5H4.5A1.5 1.5 0 0 1 3 20z" />
+                  )}
+                  {id === "notes" && (
+                    <>
+                      <path d="M9 18V5l12-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="18" cy="16" r="3" />
+                    </>
+                  )}
+                  {id === "ensemble" && (
+                    <>
+                      <circle cx="12" cy="15" r="7" />
+                      <path d="M9 9 4.5 4.5M15 9l4.5-4.5" />
+                    </>
+                  )}
+                  {id === "score" && (
+                    <path d="M5 21h14M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M9 7h6M9 11h6M9 15h4" />
+                  )}
+                </svg>
+                {label}
+              </button>
+            ))}
+
           </div>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 px-3 pb-1.5 pt-1 [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-amber-400/70">
+          <div className="editor-ribbon flex flex-wrap items-center gap-x-4 gap-y-1">
           {activeTab === "home" && (
           <ToolGroup label="Project 项目">
             <span
@@ -3423,65 +3440,6 @@ export default function StaveEditor() {
           </ToolGroup>
           )}
 
-          {activeTab === "home" && (
-          <ToolGroup label="Mode 模式">
-            <button
-              onClick={() => setViewMode((v) => !v)}
-              className={[
-                "rounded-xl border px-4 py-2 text-sm font-semibold transition-colors",
-                viewMode
-                  ? "border-amber-500 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
-                  : "border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-300",
-              ].join(" ")}
-            >
-              {viewMode ? (
-                <>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
-                    <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z" />
-                    <path d="m14 6 3 3" />
-                  </svg>
-                  Edit 编辑模式
-                </>
-              ) : (
-                <>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
-                    <path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" />
-                    <circle cx="12" cy="12" r="2.8" />
-                  </svg>
-                  View 视图模式
-                </>
-              )}
-            </button>
-            {!viewMode && (
-              <button
-                onClick={() => {
-                  setActiveGroupId(null);
-                  setSelected(selected === "select" ? "center" : "select");
-                }}
-                aria-pressed={selected === "select"}
-                className={[
-                  "rounded-xl border px-4 py-2 text-sm font-semibold transition-colors",
-                  selected === "select"
-                    ? "border-amber-400 bg-amber-400/15 text-amber-300 hover:bg-amber-400/25"
-                    : "border-zinc-700 text-zinc-300 hover:border-amber-400 hover:text-amber-300",
-                ].join(" ")}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-4 w-4 align-text-bottom" aria-hidden="true">
-                  <rect x="4" y="4" width="16" height="16" rx="3" />
-                  <path d="m9 12 2 2 4-4" />
-                </svg>
-                Select 选择
-              </button>
-            )}
-            {selected === "select" && (
-              <SelectModeToggle
-                mode={selectMode}
-                onChange={changeSelectMode}
-              />
-            )}
-          </ToolGroup>
-          )}
-
           {activeTab === "ensemble" && (
             <>
           <ToolGroup label="Ensemble 鼓手">
@@ -3502,7 +3460,7 @@ export default function StaveEditor() {
                   activePart === pt
                     ? {
                         backgroundColor: `${colorFor(pt)}22`,
-                        color: colorFor(pt),
+                        color: "var(--foreground)",
                         borderColor: `${colorFor(pt)}88`,
                       }
                     : undefined
@@ -3806,9 +3764,19 @@ export default function StaveEditor() {
                   ))}
                 </div>
               </ToolGroup>
+              <label className="col-span-12 mt-2 flex flex-col gap-1 sm:hidden">
+                <span className="editor-tool-label">Rhythm pattern 节奏型</span>
+                <select
+                  value={paintMode ? "single" : pattern}
+                  onChange={(e) => choosePattern(e.target.value as PatternId)}
+                  className="h-11 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm"
+                >
+                  {PATTERNS.map((pt) => <option key={pt.id} value={pt.id}>{pt.label} {pt.short}</option>)}
+                </select>
+              </label>
               <ToolGroup
                 label="Rhythm Patterns 节奏型"
-                className="col-span-12 sm:col-span-5"
+                className="hidden sm:flex sm:col-span-5"
               >
                 <div className="grid w-full grid-cols-4 gap-1">
                   {PATTERNS.filter((pt) => !pt.zones).map((pt) => (
@@ -3843,7 +3811,7 @@ export default function StaveEditor() {
               </ToolGroup>
               <ToolGroup
                 label="Common Mixes 常用混合"
-                className="col-span-12 sm:col-span-3"
+                className="hidden sm:flex sm:col-span-3"
               >
                 <div className="grid w-full grid-cols-2 gap-1">
                   {PATTERNS.filter((pt) => pt.zones).map((pt) => (
@@ -3885,28 +3853,14 @@ export default function StaveEditor() {
             </div>
           )}
           </div>
+          </>
+          )}
         </div>
-        )}
-        {/* View mode is distraction-free: only the Edit toggle remains. */}
-        {viewMode && (
-          <div className="flex shrink-0 items-center justify-center px-3 py-2">
-            <button
-              onClick={() => setViewMode(false)}
-              className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:border-amber-500 hover:text-amber-300"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom" aria-hidden="true">
-                <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z" />
-                <path d="m14 6 3 3" />
-              </svg>
-              Edit 编辑模式
-            </button>
-          </div>
-        )}
 
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5 lg:flex-row lg:overflow-hidden">
+        <div className="editor-panes flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           {/* Left palette */}
           {!viewMode && (
-          <aside className="order-2 w-full shrink-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 lg:order-none lg:h-full lg:w-60 lg:overflow-y-auto">
+          <aside className="editor-sidebar order-2 w-full shrink-0 overflow-hidden lg:order-none lg:h-full lg:w-60 lg:overflow-y-auto">
             <div className="divide-y divide-zinc-800/70">
             <PanelSection
               title="Tools 工具"
@@ -3972,7 +3926,7 @@ export default function StaveEditor() {
                 </button>
                 <button
                   onClick={clearAll}
-                  className="flex w-full items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+                  className="flex w-full items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
                 >
                   ✕ <span>Clear 清空</span>
                 </button>
@@ -4258,12 +4212,12 @@ export default function StaveEditor() {
           {/* Center stave canvas */}
           <div
             ref={scoreScrollRef}
-            className="order-1 flex min-w-0 flex-1 flex-col rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 lg:order-none lg:min-h-0 lg:overflow-auto"
+            className="canvas-tray order-1 flex min-w-0 flex-1 flex-col lg:order-none lg:min-h-0 lg:overflow-auto"
           >
           {/* Page navigation + view-mode zoom/layout, fixed and centred
               above the score. */}
           <div className="sticky top-0 z-20 -mx-1 mb-2 flex justify-center">
-            <div className="flex items-center gap-1 rounded-full border border-zinc-700/80 bg-zinc-900/90 px-2.5 py-1 text-xs text-zinc-300 shadow-lg">
+            <div className="score-navigation flex items-center gap-1 rounded-full text-xs text-zinc-300">
               {!viewMode && (
                 <div
                   className="relative"
@@ -4536,12 +4490,8 @@ export default function StaveEditor() {
           </div>
             {!viewMode && (
               <p className="mt-3 text-xs leading-5 text-zinc-500">
-                24 Festive Drums notation (MuseScore tutorial style): notes
-                float on a single staff line (● 鼓心, ✕ 鼓边, ▷ 鼓棒) with a
-                percussion clef, barlines and measure numbers, on PDF-style
-                A4 pages. Rhythm palette: whole 1, half 2, quarter ¼, eighth
-                ⅛, 16th 1/16, 32nd 1/32, and triplet 3 per beat. Each
-                project autosaves its score.
+                Choose a sound, then click the score to add notes. Changes save automatically.
+                选择音色后，点击谱面写下音符。自动保存。
               </p>
             )}
           </div>

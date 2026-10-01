@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Brand from "@/components/Brand";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -47,7 +47,7 @@ function LoginInner() {
         if (error) throw error;
         setMessage({
           kind: "ok",
-          text: "Account created! Check your email to confirm, then sign in. 账号已创建，请查收邮件确认后再登录。",
+          text: "Account created. Check your email to confirm, then sign in. 账号已创建，请查收邮件确认后再登录。",
         });
       }
     } catch (err) {
@@ -84,14 +84,9 @@ function LoginInner() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
-      <Link
-        href="/"
-        className="mb-6 text-sm text-zinc-500 transition-colors hover:text-zinc-200"
-      >
-        ← Drummer&apos;s Beat 节拍鼓韵
-      </Link>
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 shadow-xl">
+    <main id="main" className="login-shell mx-auto flex flex-1 flex-col justify-center">
+      <div className="mb-8"><Brand /></div>
+      <div className="login-card">
         <h1 className="text-xl font-bold">
           {mode === "in" ? "Sign in 登录" : "Create account 注册"}
         </h1>
@@ -103,9 +98,8 @@ function LoginInner() {
 
         {!isSupabaseConfigured && (
           <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs leading-5 text-amber-200">
-            Cloud features are not configured yet. Add the Supabase env vars
-            (see <span className="font-mono">docs/DEPLOYMENT.md</span>) to
-            enable accounts and sharing. 云服务尚未配置。
+            Cloud sign-in is currently unavailable. Please try again later.
+            暂时无法登录，请稍后再试。
           </div>
         )}
 
@@ -139,6 +133,7 @@ function LoginInner() {
           </label>
           {message && (
             <p
+              role={message.kind === "error" ? "alert" : "status"}
               className={
                 message.kind === "ok"
                   ? "text-xs text-emerald-400"
@@ -151,7 +146,7 @@ function LoginInner() {
           <button
             type="submit"
             disabled={busy || !isSupabaseConfigured}
-            className="w-full rounded-xl bg-amber-500 px-4 py-2.5 font-semibold text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="primary-action w-full disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy
               ? "Please wait… 请稍候"

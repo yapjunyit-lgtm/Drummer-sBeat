@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AuthButton from "@/components/AuthButton";
+import Brand from "@/components/Brand";
 import AuthGate from "@/components/AuthGate";
 import CollectionShareModal from "@/components/CollectionShareModal";
 import CombineModal from "@/components/CombineModal";
@@ -46,6 +47,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { status: authStatus, user } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [search, setSearch] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [collections, setCollections] = useState<ScoreCollection[]>([]);
   const [shared, setShared] = useState<CloudScore[]>([]);
@@ -356,27 +358,35 @@ export default function DashboardPage() {
     })();
   };
 
-  // All rhythm groups across all projects (favourites arrive later).
+  const query = search.trim().toLocaleLowerCase();
+  const matches = (text: string) => text.toLocaleLowerCase().includes(query);
+  const filteredProjects = projects.filter((p) => matches(p.name))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const filteredCollections = myCollections.filter((c) => matches(`${c.name} ${c.description}`));
+  const filteredSharedCollections = sharedCollections.filter((c) => matches(c.name));
+  const filteredShared = visibleShared.filter((c) => matches(c.project.name));
   const groupsList = projects.flatMap((p) =>
     p.groups.map((g) => ({ group: g, project: p }))
-  );
+  ).filter(({ group, project }) => matches(`${group.name} ${project.name}`));
+  const resultCount = dashTab === "scores"
+    ? filteredProjects.length + filteredShared.length
+    : dashTab === "collections"
+      ? filteredCollections.length + filteredSharedCollections.length
+      : groupsList.length;
 
   return (
     <AuthGate>
-    <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-900 pb-6">
+    <main id="main" className="library-shell mx-auto flex w-full flex-1 flex-col">
+      <nav aria-label="Library navigation" className="mb-5 flex items-center justify-between gap-4">
+        <Brand />
+        <AuthButton />
+      </nav>
+      <header className="library-header flex flex-wrap justify-between">
         <div>
-          <Link
-            href="/"
-            className="inline-block text-sm text-zinc-500 transition-colors hover:text-zinc-200"
-          >
-            ← Drummer&apos;s Beat
-          </Link>
-          <h1 className="mt-1.5 text-2xl font-bold tracking-tight">
-            Project Dashboard 项目工作台
-          </h1>
+          <h1 className="library-title">Your music library</h1>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">Write, organise and rehearse. 乐谱、项目集与节奏组合。</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="library-actions flex flex-wrap items-center gap-3">
           {cloudAvailable() && authStatus === "signed-in" && (
             <>
               <span
@@ -481,7 +491,7 @@ export default function DashboardPage() {
           </button>
           <button
             onClick={createNewProject}
-            className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-amber-500 px-5 py-2.5 font-semibold text-zinc-950 transition-colors hover:bg-amber-400"
+            className="primary-action whitespace-nowrap"
           >
             <svg
               viewBox="0 0 24 24"
@@ -494,19 +504,19 @@ export default function DashboardPage() {
             >
               <path d="M12 5v14M5 12h14" />
             </svg>
-            New Project 新建项目
+            New score 新建乐谱
           </button>
-          <AuthButton />
         </div>
       </header>
 
       {/* Ribbon categories, like the editor's tab bar. */}
-      <div className="mb-6 flex gap-1 border-b border-zinc-800">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <nav aria-label="Library categories" className="library-tabs flex">
         {(
           [
-            ["scores", "♪ Scores 乐谱"],
-            ["collections", "▤ Collections 项目集"],
-            ["groups", "≋ Groups 组合"],
+            ["scores", "Scores 乐谱"],
+            ["collections", "Collections 项目集"],
+            ["groups", "Rhythms 节奏"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -520,9 +530,15 @@ export default function DashboardPage() {
                 : "border-transparent text-zinc-400 hover:text-zinc-100",
             ].join(" ")}
           >
-            {label}
+            <span>{label.split(" ")[0]}</span>{" "}<span className="library-tab-translation">{label.split(" ")[1]}</span>
           </button>
         ))}
+      </nav>
+      <label className="library-search">
+        <span className="sr-only">Search your music library 搜索乐谱、项目集和节奏</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your library 搜索乐谱…" className="w-full rounded-full border border-zinc-800 py-2 pr-4 text-sm text-zinc-100" />
+      </label>
       </div>
 
       {syncNote && (
@@ -531,9 +547,16 @@ export default function DashboardPage() {
         </div>
       )}
 
+      <div className="library-content">
       {!mounted ? (
-        <div className="flex h-64 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/70 text-sm text-zinc-500">
-          Loading projects 加载项目…
+        <div className="grid gap-5 sm:grid-cols-2" aria-label="Loading music library 加载乐谱" role="status">
+          {[0, 1].map((i) => <div key={i} className="skeleton h-48 rounded-3xl" />)}
+        </div>
+      ) : query && resultCount === 0 ? (
+        <div className="library-empty" role="status">
+          <h3>No matches 没有匹配结果</h3>
+          <p className="text-sm text-zinc-500">Try another name or clear your search. 试试其他名称。</p>
+          <button onClick={() => setSearch("")} className="primary-action mt-6">Clear search 清除搜索</button>
         </div>
       ) : (
         <>
@@ -542,25 +565,26 @@ export default function DashboardPage() {
           {/* Projects */}
           <section className="mb-10">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-              My Projects 我的项目 · {projects.length}
+              Recently edited 最近编辑 · {filteredProjects.length}
             </h2>
             {projects.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/40 p-10 text-center text-sm text-zinc-500">
+              <div className="library-empty text-sm text-zinc-500">
               <div className="mb-3 flex justify-center text-3xl text-amber-400/70">
                 <svg viewBox="0 0 32 32" fill="none" className="h-9 w-9" aria-hidden="true">
                   <circle cx="16" cy="16" r="12.5" stroke="currentColor" strokeWidth="2.4" />
                   <circle cx="16" cy="16" r="5.5" fill="currentColor" opacity=".7" />
                 </svg>
               </div>
-                No projects yet. Create your first one to get started. 还没有
-                项目，先新建一个吧。
+                <h3 className="text-zinc-100">Your first rhythm starts here.</h3>
+                <p className="mx-auto mt-2 max-w-md leading-7">Create a score, choose your drum sounds, and place your first notes. 新建一份乐谱，写下第一段节奏。</p>
+                <button onClick={createNewProject} className="primary-action mt-6">Create a score 新建乐谱</button>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {projects.map((p) => (
+              <div className="grid gap-5 sm:grid-cols-2">
+                {filteredProjects.map((p) => (
                   <div
                     key={p.id}
-                    className="group rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 text-left transition-colors hover:border-amber-500/60"
+                    className="project-card group text-left transition-transform"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link
@@ -620,8 +644,8 @@ export default function DashboardPage() {
                           {p.groups.length} groups 组合
                         </span>
                       </div>
-                      <div className="mt-4 text-xs text-amber-400 opacity-0 transition-opacity group-hover:opacity-100">
-                        Open 打开 →
+                      <div className="mt-6 flex items-center justify-between border-t border-zinc-800 pt-4 text-sm font-medium text-amber-400">
+                        Open score 打开乐谱 →
                       </div>
                     </Link>
                   </div>
@@ -638,7 +662,7 @@ export default function DashboardPage() {
           <section className="mb-10">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
-                Collections 项目集 · {myCollections.length}
+                Collections 项目集 · {filteredCollections.length}
               </h2>
               <button
                 onClick={createNewCollection}
@@ -651,7 +675,7 @@ export default function DashboardPage() {
               </button>
             </div>
             {myCollections.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/40 p-10 text-center text-sm text-zinc-500">
+              <div className="library-empty text-sm text-zinc-500">
                 <div className="mb-3 flex justify-center text-3xl text-amber-400/70">
                   <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="h-9 w-9" aria-hidden="true">
                     <rect x="6" y="6" width="20" height="20" rx="4" opacity=".85" />
@@ -662,11 +686,11 @@ export default function DashboardPage() {
                 Create your first collection. 将多首乐谱分组，并添加笔记、图片和评论。
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {myCollections.map((c) => (
+              <div className="grid gap-5 sm:grid-cols-2">
+                {filteredCollections.map((c) => (
                   <div
                     key={c.id}
-                    className="group rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors hover:border-amber-500/60"
+                    className="project-card group transition-transform"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link
@@ -722,13 +746,13 @@ export default function DashboardPage() {
           {sharedCollections.length > 0 && (
             <section className="mb-10">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-                Shared with me 与我共享 · {sharedCollections.length}
+                Shared with me 与我共享 · {filteredSharedCollections.length}
               </h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {sharedCollections.map((c) => (
+              <div className="grid gap-5 sm:grid-cols-2">
+                {filteredSharedCollections.map((c) => (
                   <div
                     key={c.id}
-                    className="rounded-2xl border border-cyan-500/30 bg-zinc-900/60 p-5 transition-colors hover:border-cyan-400/60"
+                    className="project-card transition-transform"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link href={`/collections/${c.id}`} className="min-w-0">
@@ -774,13 +798,13 @@ export default function DashboardPage() {
           {visibleShared.length > 0 && (
             <section className="mb-10">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-                Shared with me 与我共享 · {visibleShared.length}
+                Shared with me 与我共享 · {filteredShared.length}
               </h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {visibleShared.map((c) => (
+              <div className="grid gap-5 sm:grid-cols-2">
+                {filteredShared.map((c) => (
                   <div
                     key={c.project.id}
-                    className="rounded-2xl border border-cyan-500/30 bg-zinc-900/60 p-5 transition-colors hover:border-cyan-400/60"
+                    className="project-card transition-transform"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="min-w-0 truncate font-semibold text-zinc-100">
@@ -855,7 +879,7 @@ export default function DashboardPage() {
               </button>
             </div>
             {groupsList.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/40 p-10 text-center text-sm text-zinc-500">
+              <div className="library-empty text-sm text-zinc-500">
               <div className="mb-3 flex justify-center text-3xl text-amber-400/70">
                 <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="h-9 w-9" aria-hidden="true">
                   <path d="M4 18v-4M10 18v-8M16 18v-3M22 18v-6" />
@@ -915,6 +939,7 @@ export default function DashboardPage() {
           )}
         </>
       )}
+      </div>
       {metronomeOpen && (
         <MetronomeSession onClose={() => setMetronomeOpen(false)} />
       )}
@@ -934,7 +959,7 @@ export default function DashboardPage() {
         }}
       />
       <ShareModal
-        key={shareProject?.id ?? "none"}
+        key={`score-share:${shareProject?.id ?? "none"}`}
         open={shareProject !== null}
         onClose={() => setShareProject(null)}
         project={shareProject}
@@ -950,7 +975,7 @@ export default function DashboardPage() {
         }}
       />
       <CollectionShareModal
-        key={shareCollection?.id ?? "none"}
+        key={`collection-share:${shareCollection?.id ?? "none"}`}
         open={shareCollection !== null}
         onClose={() => setShareCollection(null)}
         collection={shareCollection}
