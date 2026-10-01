@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AuthGate from "@/components/AuthGate";
@@ -68,6 +69,7 @@ export default function NewGroupPage() {
             New Rhythm Group 新建节奏组合
           </h1>
         </div>
+        <ThemeToggle />
       </header>
 
       <input

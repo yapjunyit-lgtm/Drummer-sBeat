@@ -1,6 +1,7 @@
 "use client";
 
 import Brand from "@/components/Brand";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -85,7 +86,7 @@ function LoginInner() {
 
   return (
     <main id="main" className="login-shell mx-auto flex flex-1 flex-col justify-center">
-      <div className="mb-8"><Brand /></div>
+      <div className="mb-8 flex items-center justify-between gap-3"><Brand /><ThemeToggle /></div>
       <div className="login-card">
         <h1 className="text-xl font-bold">
           {mode === "in" ? "Sign in 登录" : "Create account 注册"}

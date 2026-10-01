@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 
 /* Compact auth control for page headers: shows local/sign-in state, and for a
    signed-in user a small avatar menu with sign out. */
 export default function AuthButton() {
+  return <div className="flex shrink-0 items-center gap-2"><ThemeToggle /><AuthControl /></div>;
+}
+
+function AuthControl() {
   const { status, user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);

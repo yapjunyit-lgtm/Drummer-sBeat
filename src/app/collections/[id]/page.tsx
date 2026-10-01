@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useParams, useRouter } from "next/navigation";
 import AuthGate from "@/components/AuthGate";
 import CollectionShareModal from "@/components/CollectionShareModal";
@@ -467,12 +468,15 @@ export default function CollectionPage() {
   return (
     <AuthGate>
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+      <nav className="flex items-center justify-between gap-3" aria-label="Collection navigation">
       <Link
         href="/dashboard"
         className="text-sm text-zinc-500 transition-colors hover:text-zinc-200"
       >
         ← Dashboard 项目工作台
       </Link>
+        <ThemeToggle />
+      </nav>
 
       {/* Header */}
       <div className="mt-3 mb-8 flex items-start justify-between gap-4">
